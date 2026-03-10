@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowRight, X } from "lucide-react";
 
 interface DraftingLeague {
@@ -14,26 +15,30 @@ interface DraftingLeague {
  * at the top of the app whenever one of their leagues is actively drafting.
  */
 export function DraftingBanner() {
+  const pathname = usePathname();
   const [draftingLeagues, setDraftingLeagues] = useState<DraftingLeague[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const fetchLeagues = () => {
-    fetch("/api/leagues")
-      .then((r) => r.json())
-      .then((d) => {
-        const drafting: DraftingLeague[] = (d.leagues ?? [])
-          .filter((l: { status: string }) => l.status === "drafting")
-          .map((l: { id: string; name: string }) => ({ id: l.id, name: l.name }));
-        setDraftingLeagues(drafting);
-      })
-      .catch(() => {});
-  };
-
   useEffect(() => {
+    const fetchLeagues = () => {
+      fetch("/api/leagues")
+        .then((r) => r.json())
+        .then((d) => {
+          const drafting: DraftingLeague[] = (d.leagues ?? [])
+            .filter((l: { status: string }) => l.status === "drafting")
+            .map((l: { id: string; name: string }) => ({ id: l.id, name: l.name }));
+          setDraftingLeagues(drafting);
+        })
+        .catch(() => {});
+    };
+
     fetchLeagues();
     const interval = setInterval(fetchLeagues, 30_000);
     return () => clearInterval(interval);
   }, []);
+
+  // Don't show the banner if the user is already inside a draft room
+  if (pathname?.startsWith("/draft/")) return null;
 
   const visible = draftingLeagues.filter((l) => !dismissed.has(l.id));
   if (visible.length === 0) return null;

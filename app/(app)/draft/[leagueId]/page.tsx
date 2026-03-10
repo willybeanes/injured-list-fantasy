@@ -16,6 +16,9 @@ import {
   ChevronUp,
   ChevronDown,
   Bell,
+  ListPlus,
+  Check,
+  X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, healthGrade, GRADE_STYLES } from "@/lib/utils";
@@ -100,8 +103,29 @@ export default function DraftRoomPage() {
   const [autoPickMsg, setAutoPickMsg] = useState<string | null>(null);
   const [secsUntilDraft, setSecsUntilDraft] = useState<number | null>(null);
 
-  // Mobile tab ("players" | "board")
-  const [mobileTab, setMobileTab] = useState<"players" | "board">("players");
+  // Mobile tab ("players" | "board" | "queue")
+  const [mobileTab, setMobileTab] = useState<"players" | "board" | "queue">("players");
+
+  // Draft queue — ordered list of mlbPlayerIds
+  const [queue, setQueue] = useState<number[]>([]);
+  const queueRef = useRef<number[]>([]);
+  // Keep ref in sync so auto-pick can read it without stale closure
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+
+  const addToQueue = (playerId: number) =>
+    setQueue((prev) => (prev.includes(playerId) ? prev : [...prev, playerId]));
+
+  const removeFromQueue = (playerId: number) =>
+    setQueue((prev) => prev.filter((id) => id !== playerId));
+
+  const moveInQueue = (index: number, dir: "up" | "down") =>
+    setQueue((prev) => {
+      const next = [...prev];
+      const target = dir === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
 
   // Sort
   const [sortColumn, setSortColumn] = useState("careerIlDays");
@@ -163,23 +187,23 @@ export default function DraftRoomPage() {
     const res = await fetch(`/api/draft/${leagueId}`);
     if (!res.ok) return;
     const data = await res.json();
-    setDraftState(() => {
-      const draftedIds = new Set<number>(
-        data.picks
-          .filter((p: DraftPick) => p.mlbPlayerId !== null)
-          .map((p: DraftPick) => p.mlbPlayerId as number)
-      );
-      return {
-        ...data.league,
-        myUserId: data.myUserId,
-        myTeamIndex: data.myTeamIndex,
-        picks: data.picks,
-        currentPickNumber: data.currentPickNumber,
-        currentTeamIndex: data.currentTeamIndex,
-        draftedPlayerIds: draftedIds,
-        draftScheduledAt: data.league.draftScheduledAt ?? null,
-      };
+    const draftedIds = new Set<number>(
+      data.picks
+        .filter((p: DraftPick) => p.mlbPlayerId !== null)
+        .map((p: DraftPick) => p.mlbPlayerId as number)
+    );
+    setDraftState({
+      ...data.league,
+      myUserId: data.myUserId,
+      myTeamIndex: data.myTeamIndex,
+      picks: data.picks,
+      currentPickNumber: data.currentPickNumber,
+      currentTeamIndex: data.currentTeamIndex,
+      draftedPlayerIds: draftedIds,
+      draftScheduledAt: data.league.draftScheduledAt ?? null,
     });
+    // Auto-remove any drafted players from the queue
+    setQueue((prev) => prev.filter((id) => !draftedIds.has(id)));
   }, [leagueId]);
 
   // Load player pool (active players only)
@@ -327,6 +351,37 @@ export default function DraftRoomPage() {
     autoPickTriggeredRef.current = true;
 
     const trigger = async () => {
+      // Check the queue first — pick the top available queued player
+      const firstQueued = queueRef.current.find(
+        (id) => !draftState!.draftedPlayerIds.has(id)
+      );
+
+      if (firstQueued) {
+        const res = await fetch(`/api/draft/${leagueId}/pick`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mlbPlayerId: firstQueued }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const playerName =
+            players.find((p) => p.id === firstQueued)?.fullName ?? "queued player";
+          setAutoPickMsg(`⚡ Auto-drafted ${playerName} from queue`);
+          setTimeout(() => setAutoPickMsg(null), 4000);
+          await supabase.channel(`draft:${leagueId}`).send({
+            type: "broadcast",
+            event: "pick_made",
+            payload: { playerId: firstQueued, autoPicked: true },
+          });
+          await loadDraftState();
+          await loadPlayers();
+          return;
+        }
+        // Queue pick failed (e.g. player taken mid-pick) — fall through to auto-pick
+        console.warn("Queue pick failed:", data.error);
+      }
+
+      // No queue or queue pick failed — use server-side auto-pick
       const res = await fetch(`/api/draft/${leagueId}/auto-pick`, {
         method: "POST",
       });
@@ -687,6 +742,22 @@ export default function DraftRoomPage() {
             Players
           </button>
           <button
+            onClick={() => setMobileTab("queue")}
+            className={cn(
+              "flex-1 py-1.5 text-xs font-extrabold rounded-[8px] transition-colors relative",
+              mobileTab === "queue"
+                ? "bg-[var(--surface)] text-[var(--text-primary)]"
+                : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            )}
+          >
+            Queue
+            {queue.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-blue-500 text-white text-[9px] font-extrabold flex items-center justify-center leading-none">
+                {queue.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setMobileTab("board")}
             className={cn(
               "flex-1 py-1.5 text-xs font-extrabold rounded-[8px] transition-colors",
@@ -695,7 +766,7 @@ export default function DraftRoomPage() {
                 : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             )}
           >
-            Draft Board
+            Board
           </button>
         </div>
 
@@ -947,8 +1018,8 @@ export default function DraftRoomPage() {
                       <SortIcon col="grade" sortColumn={sortColumn} sortDir={sortDir} />
                     </span>
                   </th>
-                  <th className="w-20 text-right">
-                    {isMyTurn && !isDraftComplete ? "Action" : ""}
+                  <th className="w-24 text-right">
+                    {!isDraftComplete ? "Queue" : ""}
                   </th>
                 </tr>
               </thead>
@@ -969,19 +1040,7 @@ export default function DraftRoomPage() {
                     );
                     const avg = player.careerIlDays / Math.max(1, player.careerSeasons);
                     return (
-                      <tr
-                        key={player.id}
-                        className={cn(
-                          isMyTurn && !isDraftComplete
-                            ? "cursor-pointer hover:bg-[var(--surface-2)]"
-                            : ""
-                        )}
-                        onClick={() => {
-                          if (isMyTurn && !isDraftComplete && !makingPick) {
-                            makePick(player.id);
-                          }
-                        }}
-                      >
+                      <tr key={player.id}>
                         {/* Player */}
                         <td>
                           <button
@@ -1053,24 +1112,57 @@ export default function DraftRoomPage() {
                           </span>
                         </td>
 
-                        {/* Action */}
+                        {/* Action: queue toggle + draft button */}
                         <td className="text-right">
-                          {isMyTurn && !isDraftComplete && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                makePick(player.id);
-                              }}
-                              disabled={makingPick}
-                              className="btn-primary text-xs py-1 px-2.5"
-                            >
-                              {makingPick ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                "Draft"
-                              )}
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Queue toggle */}
+                            {!isDraftComplete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (queue.includes(player.id)) {
+                                    removeFromQueue(player.id);
+                                  } else {
+                                    addToQueue(player.id);
+                                  }
+                                }}
+                                className={cn(
+                                  "w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors shrink-0",
+                                  queue.includes(player.id)
+                                    ? "bg-blue-500/20 text-blue-400 hover:bg-red-500/10 hover:text-brand-red"
+                                    : "text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10"
+                                )}
+                                title={
+                                  queue.includes(player.id)
+                                    ? "Remove from queue"
+                                    : "Add to queue"
+                                }
+                              >
+                                {queue.includes(player.id) ? (
+                                  <Check className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ListPlus className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                            {/* Draft button — only on your turn */}
+                            {isMyTurn && !isDraftComplete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  makePick(player.id);
+                                }}
+                                disabled={makingPick}
+                                className="btn-primary text-xs py-1 px-2.5 shrink-0"
+                              >
+                                {makingPick ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  "Draft"
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1116,12 +1208,87 @@ export default function DraftRoomPage() {
           </div>
         </div>
 
-        {/* ── Right: Draft board ── */}
+        {/* ── Right: Queue + Draft board ── */}
         <div className={cn(
-          "flex-1 flex flex-col gap-3 overflow-hidden",
-          mobileTab === "board" ? "flex" : "hidden md:flex"
+          "flex-1 flex flex-col gap-2 overflow-hidden",
+          mobileTab === "board" || mobileTab === "queue" ? "flex" : "hidden md:flex"
         )}>
-          <div className="card flex-1 overflow-hidden flex flex-col">
+
+          {/* Queue Panel */}
+          <div className={cn(
+            "card shrink-0",
+            mobileTab === "queue" ? "flex flex-col flex-1 overflow-hidden" : "hidden md:block"
+          )}>
+            <div className="flex items-center gap-2 mb-2">
+              <ListPlus className="w-4 h-4 text-blue-400 shrink-0" />
+              <h2 className="text-sm font-extrabold text-[var(--text-primary)]">My Queue</h2>
+              {queue.length > 0 && (
+                <span className="ml-auto text-xs font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full">
+                  {queue.length}
+                </span>
+              )}
+            </div>
+
+            {queue.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] text-center py-2">
+                Click <ListPlus className="w-3 h-3 inline" /> on a player to add them to your queue
+              </p>
+            ) : (
+              <div className="overflow-y-auto space-y-1 max-h-44">
+                {queue.map((playerId, idx) => {
+                  const qp = players.find((pl) => pl.id === playerId);
+                  if (!qp) return null;
+                  return (
+                    <div
+                      key={playerId}
+                      className="flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] bg-[var(--surface-2)] group"
+                    >
+                      <span className="text-xs font-bold text-[var(--text-muted)] w-4 shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span className="text-xs font-semibold text-[var(--text-primary)] flex-1 truncate">
+                        {qp.fullName}
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)] shrink-0 mr-0.5">
+                        {qp.teamAbbr ?? "—"}
+                      </span>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={() => moveInQueue(idx, "up")}
+                          disabled={idx === 0}
+                          className="w-5 h-5 flex items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors"
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => moveInQueue(idx, "down")}
+                          disabled={idx === queue.length - 1}
+                          className="w-5 h-5 flex items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors"
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => removeFromQueue(playerId)}
+                          className="w-5 h-5 flex items-center justify-center rounded text-[var(--text-muted)] hover:text-brand-red transition-colors"
+                          title="Remove from queue"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Draft Board */}
+          <div className={cn(
+            "card flex-1 overflow-hidden flex-col",
+            mobileTab === "board" ? "flex" : "hidden md:flex"
+          )}>
             <div className="flex items-center gap-2 mb-3 shrink-0">
               <Trophy className="w-4 h-4 text-amber-500" />
               <h2 className="text-sm font-extrabold text-[var(--text-primary)]">
