@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { DraftingBanner } from "@/components/layout/DraftingBanner";
 import { PlayerCardProvider } from "@/components/player/PlayerCardContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 export default async function AppLayout({
   children,
@@ -32,6 +33,7 @@ export default async function AppLayout({
   }
 
   return (
+    <NotificationProvider>
     <PlayerCardProvider>
       <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
         <Sidebar
@@ -48,5 +50,6 @@ export default async function AppLayout({
         <BottomNav />
       </div>
     </PlayerCardProvider>
+    </NotificationProvider>
   );
 }

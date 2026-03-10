@@ -15,10 +15,12 @@ import {
   Zap,
   ChevronUp,
   ChevronDown,
+  Bell,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, healthGrade, GRADE_STYLES } from "@/lib/utils";
 import { usePlayerCard } from "@/components/player/PlayerCardContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface MlbPlayer {
   id: number;
@@ -116,9 +118,45 @@ export default function DraftRoomPage() {
   const [filterGrades, setFilterGrades] = useState<Set<string>>(new Set());
 
   const { openPlayerCard } = usePlayerCard();
+  const { addNotification } = useNotifications();
   const supabase = createClient();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const autoPickTriggeredRef = useRef(false);
+  const prevPickNumberRef = useRef<number | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
+  const requestNotifPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  };
+
+  /** Fire both a browser notification and add to the in-app bell */
+  const sendAlert = useCallback(
+    (title: string, body?: string, href?: string) => {
+      // In-app notification (bell icon)
+      addNotification({ title, body, href });
+
+      // Browser notification (works even when tab is backgrounded)
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(title, {
+            body,
+            icon: "/favicon.ico",
+            tag: "draft-pick", // replaces previous draft notification
+          });
+        } catch {}
+      }
+    },
+    [addNotification]
+  );
 
   // Load draft state
   const loadDraftState = useCallback(async () => {
@@ -187,6 +225,71 @@ export default function DraftRoomPage() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [draftState?.draftScheduledAt]);
+
+  // Notify when draft actually starts (countdown reaches 0 while in waiting room)
+  const wasDraftStartedRef = useRef(false);
+  useEffect(() => {
+    if (!draftState) return;
+    const started = !draftState.draftScheduledAt || secsUntilDraft === null || secsUntilDraft <= 0;
+    if (started && !wasDraftStartedRef.current) {
+      wasDraftStartedRef.current = true;
+      // Only fire the "draft started" notification if we were actually waiting (had a countdown)
+      if (draftState.draftScheduledAt) {
+        sendAlert("🎉 Draft starting!", `${draftState.leagueName} — the draft has begun!`, `/draft/${draftState.leagueId}`);
+      }
+    }
+  }, [secsUntilDraft, draftState, sendAlert]);
+
+  // Notify when it becomes your turn or 2 picks away
+  useEffect(() => {
+    if (!draftState || draftState.status !== "drafting") return;
+    const draftStarted = !draftState.draftScheduledAt || secsUntilDraft === null || secsUntilDraft <= 0;
+    if (!draftStarted) return;
+
+    const pickNum = draftState.currentPickNumber;
+    if (prevPickNumberRef.current === pickNum) return;
+    prevPickNumberRef.current = pickNum;
+
+    // Notify if it's now my turn
+    if (draftState.currentTeamIndex === draftState.myTeamIndex) {
+      sendAlert(
+        "🟢 Your pick!",
+        `It's your turn in ${draftState.leagueName}`,
+        `/draft/${draftState.leagueId}`
+      );
+    }
+
+    // Notify if the pick 2 slots from now is mine
+    const twoAhead = draftState.picks.find((p) => p.pickNumber === pickNum + 2);
+    if (twoAhead && twoAhead.userId === draftState.myUserId) {
+      sendAlert(
+        "⏰ Get ready — 2 picks away!",
+        `Your turn is coming up in ${draftState.leagueName}`,
+        `/draft/${draftState.leagueId}`
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftState?.currentPickNumber, secsUntilDraft]);
+
+  // Flash the browser tab title when it's my turn
+  useEffect(() => {
+    if (!draftState) return;
+    const draftStarted = !draftState.draftScheduledAt || secsUntilDraft === null || secsUntilDraft <= 0;
+    const myTurn = draftStarted && draftState.currentTeamIndex === draftState.myTeamIndex;
+    const complete = draftState.status === "active";
+    if (!myTurn || complete) return;
+
+    const original = document.title;
+    let flash = true;
+    const id = setInterval(() => {
+      document.title = flash ? "🟢 YOUR PICK!" : original;
+      flash = !flash;
+    }, 700);
+    return () => {
+      clearInterval(id);
+      document.title = original;
+    };
+  }, [draftState?.currentTeamIndex, draftState?.myTeamIndex, secsUntilDraft, draftState?.status]);
 
   // Pick timer — resets on each pick (only runs after draft has actually started)
   useEffect(() => {
@@ -503,6 +606,22 @@ export default function DraftRoomPage() {
             <p className="text-xs text-[var(--text-muted)]">
               The draft will begin automatically when the timer reaches zero.
             </p>
+
+            {/* Notification permission prompt */}
+            {notifPermission === "default" && (
+              <button
+                onClick={requestNotifPermission}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-input border border-[var(--border)] text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-2)] bg-[var(--surface-2)] transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                Enable pick alerts
+              </button>
+            )}
+            {notifPermission === "granted" && (
+              <p className="text-xs text-green-400 flex items-center gap-1 justify-center">
+                <Bell className="w-3 h-3" /> Pick alerts on
+              </p>
+            )}
           </div>
           {/* Show teams while waiting */}
           <div className="card max-w-sm w-full">
@@ -596,17 +715,27 @@ export default function DraftRoomPage() {
                   : "bg-[var(--surface)] border border-[var(--border)]"
               )}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {isMyTurn ? (
-                  <Activity className="w-4 h-4 text-brand-red animate-pulse" />
+                  <Activity className="w-4 h-4 text-brand-red animate-pulse shrink-0" />
                 ) : (
-                  <Users className="w-4 h-4 text-[var(--text-muted)]" />
+                  <Users className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 )}
-                <span className="text-sm font-extrabold text-[var(--text-primary)]">
+                <span className="text-sm font-extrabold text-[var(--text-primary)] truncate">
                   {isMyTurn
                     ? "Your pick — choose a player!"
                     : `Waiting for ${currentTeam?.username ?? "..."} to pick`}
                 </span>
+                {/* Subtle enable-alerts button inline with status */}
+                {notifPermission === "default" && (
+                  <button
+                    onClick={requestNotifPermission}
+                    className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                    title="Enable pick alerts"
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Timer */}

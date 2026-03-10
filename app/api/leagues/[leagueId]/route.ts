@@ -119,8 +119,8 @@ export async function PATCH(
     if (league.status !== "upcoming") {
       return NextResponse.json({ error: "Cannot change team count after draft has started" }, { status: 400 });
     }
-    if (![5, 10, 15].includes(maxTeams)) {
-      return NextResponse.json({ error: "Max teams must be 5, 10, or 15" }, { status: 400 });
+    if (![4, 6, 8].includes(maxTeams)) {
+      return NextResponse.json({ error: "Max teams must be 4, 6, or 8" }, { status: 400 });
     }
     // Can't reduce below current member count
     const memberCount = await prisma.leagueMember.count({ where: { leagueId } });

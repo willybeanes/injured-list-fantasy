@@ -251,7 +251,7 @@ function CreateLeagueModal({
   onCreated: (league: League) => void;
 }) {
   const [name, setName] = useState("");
-  const [maxTeams, setMaxTeams] = useState(10);
+  const [maxTeams, setMaxTeams] = useState(8);
   const draftFormat = "snake";
   const scoringType = "season_total";
   const [pickTimerSeconds, setPickTimerSeconds] = useState(90);
@@ -303,7 +303,7 @@ function CreateLeagueModal({
             Max Teams
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {[5, 10, 15].map((n) => (
+            {[4, 6, 8].map((n) => (
               <button
                 key={n}
                 type="button"

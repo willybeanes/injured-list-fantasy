@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 const LEAGUE_SIZE_OPTIONS = [
   { label: "All", value: null },
-  { label: "5 Teams", value: 5 },
-  { label: "10 Teams", value: 10 },
-  { label: "15 Teams", value: 15 },
+  { label: "4 Teams", value: 4 },
+  { label: "6 Teams", value: 6 },
+  { label: "8 Teams", value: 8 },
 ] as const;
 
 async function getStandingsData(userId: string, leagueSizeFilter: number | null) {

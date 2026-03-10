@@ -40,8 +40,8 @@ export async function POST(request: Request) {
   if (!name?.trim()) {
     return NextResponse.json({ error: "League name is required" }, { status: 400 });
   }
-  if (![5, 10, 15].includes(maxTeams)) {
-    return NextResponse.json({ error: "Max teams must be 5, 10, or 15" }, { status: 400 });
+  if (![4, 6, 8].includes(maxTeams)) {
+    return NextResponse.json({ error: "Max teams must be 4, 6, or 8" }, { status: 400 });
   }
   if (pickTimerSeconds && ![45, 60, 90].includes(pickTimerSeconds)) {
     return NextResponse.json({ error: "Pick timer must be 45, 60, or 90 seconds" }, { status: 400 });

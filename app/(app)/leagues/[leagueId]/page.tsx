@@ -670,7 +670,7 @@ function LeagueSettingsModal({
           <div className="space-y-2">
             <label className="text-xs font-semibold text-[var(--text-secondary)]">Max Teams</label>
             <div className="grid grid-cols-3 gap-2">
-              {[5, 10, 15].map((n) => {
+              {[4, 6, 8].map((n) => {
                 const tooSmall = n < currentMemberCount;
                 return (
                   <button

@@ -56,7 +56,7 @@ model League {
   name           String
   commissionerId String
   commissioner   User         @relation("Commissioner", fields: [commissionerId], references: [id])
-  maxTeams       Int          @default(12)
+  maxTeams       Int          @default(8)
   rosterSize     Int          @default(10)
   draftFormat    DraftFormat  @default(snake)
   scoringType    ScoringType  @default(season_total)
