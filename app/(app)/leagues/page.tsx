@@ -97,14 +97,15 @@ export default function LeaguesPage() {
               onClick={() => setShowJoin(true)}
               className="btn-secondary text-sm py-1.5 px-3"
             >
-              Join League
+              <Users className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Join League</span>
             </button>
             <button
               onClick={() => setShowCreate(true)}
               className="btn-primary text-sm py-1.5 px-3"
             >
               <Plus className="w-3.5 h-3.5" />
-              Create League
+              <span className="hidden sm:inline">Create League</span>
             </button>
           </div>
         }

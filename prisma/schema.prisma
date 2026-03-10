@@ -64,8 +64,10 @@ model League {
   status            LeagueStatus @default(upcoming)
   seasonYear        Int
   pickTimerSeconds  Int          @default(90)
-  draftScheduledAt  DateTime?
-  createdAt         DateTime     @default(now())
+  draftScheduledAt         DateTime?
+  draftReminderSentAt      DateTime?
+  draftFinalReminderSentAt DateTime?
+  createdAt                DateTime     @default(now())
 
   members LeagueMember[]
   rosters Roster[]

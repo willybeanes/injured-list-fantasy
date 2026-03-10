@@ -50,6 +50,7 @@ interface DraftState {
   status: string;
   rosterSize: number;
   pickTimerSeconds: number;
+  draftScheduledAt: string | null;
   teams: Array<{ userId: string; username: string }>;
   myUserId: string;
   myTeamIndex: number;
@@ -95,6 +96,7 @@ export default function DraftRoomPage() {
   const [pickError, setPickError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(90);
   const [autoPickMsg, setAutoPickMsg] = useState<string | null>(null);
+  const [secsUntilDraft, setSecsUntilDraft] = useState<number | null>(null);
 
   // Mobile tab ("players" | "board")
   const [mobileTab, setMobileTab] = useState<"players" | "board">("players");
@@ -137,6 +139,7 @@ export default function DraftRoomPage() {
         currentPickNumber: data.currentPickNumber,
         currentTeamIndex: data.currentTeamIndex,
         draftedPlayerIds: draftedIds,
+        draftScheduledAt: data.league.draftScheduledAt ?? null,
       };
     });
   }, [leagueId]);
@@ -169,9 +172,26 @@ export default function DraftRoomPage() {
     };
   }, [leagueId, loadDraftState, loadPlayers, supabase]);
 
-  // Pick timer — resets on each pick
+  // Pre-draft countdown — ticks while status is "drafting" but start time is still in the future
+  useEffect(() => {
+    if (!draftState?.draftScheduledAt) return;
+
+    const tick = () => {
+      const diff = Math.ceil(
+        (new Date(draftState.draftScheduledAt!).getTime() - Date.now()) / 1000
+      );
+      setSecsUntilDraft(diff > 0 ? diff : 0);
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [draftState?.draftScheduledAt]);
+
+  // Pick timer — resets on each pick (only runs after draft has actually started)
   useEffect(() => {
     if (!draftState || draftState.status !== "drafting") return;
+    if (!isDraftStarted) return;
 
     const timerDuration = draftState.pickTimerSeconds ?? 90;
     autoPickTriggeredRef.current = false;
@@ -434,7 +454,13 @@ export default function DraftRoomPage() {
     );
   }
 
-  const isMyTurn = draftState.currentTeamIndex === draftState.myTeamIndex;
+  // True once the scheduled start time has passed (or there's no scheduled time)
+  const isDraftStarted =
+    !draftState.draftScheduledAt ||
+    secsUntilDraft === null ||
+    secsUntilDraft <= 0;
+
+  const isMyTurn = isDraftStarted && draftState.currentTeamIndex === draftState.myTeamIndex;
   const isDraftComplete = draftState.status === "active";
   const currentTeam = draftState.teams[draftState.currentTeamIndex];
   const totalPicks = draftState.rosterSize * draftState.teams.length;
@@ -446,6 +472,74 @@ export default function DraftRoomPage() {
       : timeLeft > timerDuration * 0.17
       ? "#d97706"
       : "#dc2f1f";
+
+  // Pre-draft waiting room: status is "drafting" but start time hasn't passed yet
+  if (!isDraftStarted && secsUntilDraft !== null && secsUntilDraft > 0) {
+    const mins = Math.floor(secsUntilDraft / 60);
+    const secs = secsUntilDraft % 60;
+    const countdownStr = `${mins}:${String(secs).padStart(2, "0")}`;
+    return (
+      <div>
+        <Topbar title={`${draftState.leagueName} — Draft`} subtitle="Draft room open" />
+        <div className="flex flex-col items-center justify-center py-24 px-6 gap-6">
+          <div className="card max-w-sm w-full text-center flex flex-col items-center gap-5 p-8">
+            <div className="w-14 h-14 rounded-full bg-brand-red/10 border border-brand-red/30 flex items-center justify-center">
+              <Clock className="w-7 h-7 text-brand-red" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                Draft Starting In
+              </p>
+              <p className="text-5xl font-extrabold text-[var(--text-primary)] tabular-nums">
+                {countdownStr}
+              </p>
+            </div>
+            <div className="w-full rounded-[10px] bg-[var(--surface-2)] px-4 py-3">
+              <p className="text-xs text-[var(--text-muted)] mb-0.5">League</p>
+              <p className="text-sm font-extrabold text-[var(--text-primary)]">
+                {draftState.leagueName}
+              </p>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              The draft will begin automatically when the timer reaches zero.
+            </p>
+          </div>
+          {/* Show teams while waiting */}
+          <div className="card max-w-sm w-full">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-[var(--text-muted)]" />
+              <p className="text-sm font-extrabold text-[var(--text-primary)]">
+                {draftState.teams.length} Manager{draftState.teams.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {draftState.teams.map((team, i) => (
+                <div
+                  key={team.userId}
+                  className="flex items-center gap-3 px-3 py-2 rounded-[8px] bg-[var(--surface-2)]"
+                >
+                  <span className="text-xs font-bold text-[var(--text-muted)] w-5">{i + 1}</span>
+                  <span
+                    className={cn(
+                      "text-sm font-semibold flex-1",
+                      team.userId === draftState.myUserId
+                        ? "text-brand-red"
+                        : "text-[var(--text-primary)]"
+                    )}
+                  >
+                    {team.username}
+                    {team.userId === draftState.myUserId && (
+                      <span className="ml-1.5 text-xs text-[var(--text-muted)]">(you)</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

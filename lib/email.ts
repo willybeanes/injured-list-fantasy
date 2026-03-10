@@ -193,6 +193,100 @@ export async function sendLeagueInviteToNewUser({
   }
 }
 
+export async function sendDraftReminder({
+  to,
+  username,
+  leagueName,
+  leagueId,
+  draftAt,
+}: {
+  to: string;
+  username: string;
+  leagueName: string;
+  leagueId: string;
+  draftAt: Date;
+}) {
+  const timeStr = draftAt.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `⏰ Draft starts in 2 hours — ${leagueName}`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">⏰</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your Draft Starts in 2 Hours</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username}, get ready!</p>
+          <div style="background:#191d26;border:1px solid #272e3d;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">League</p>
+            <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${leagueName}</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:600;margin:6px 0 0;">Draft at ${timeStr}</p>
+          </div>
+          <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
+            Go to Draft Room →
+          </a>
+          <p style="color:#505c6e;font-size:12px;margin-top:20px;">
+            The draft room opens 5 minutes before the scheduled time.
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft reminder:", err);
+  }
+}
+
+export async function sendDraftFinalReminder({
+  to,
+  username,
+  leagueName,
+  leagueId,
+}: {
+  to: string;
+  username: string;
+  leagueName: string;
+  leagueId: string;
+}) {
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `🚨 Your draft is starting now — ${leagueName}`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">🚨</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your Draft Is Starting Now!</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username}, the draft room is open — get in there!</p>
+          <div style="background:#191d26;border:1px solid #dc2f1f;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">League</p>
+            <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${leagueName}</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">🔴 Live now</p>
+          </div>
+          <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
+            Enter Draft Room →
+          </a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft final reminder:", err);
+  }
+}
+
 export async function sendWeeklySummary({
   to,
   username,
