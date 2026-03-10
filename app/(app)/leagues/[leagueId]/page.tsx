@@ -19,6 +19,7 @@ import {
   Mail,
   Send,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber, formatIlStatus } from "@/lib/utils";
@@ -68,12 +69,16 @@ export default function LeagueDetailPage() {
   const [league, setLeague] = useState<LeagueDetail | null>(null);
   const [rosters, setRosters] = useState<RosterWithUser[]>([]);
   const [isCommissioner, setIsCommissioner] = useState(false);
+  const [myRosterId, setMyRosterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [startingDraft, setStartingDraft] = useState(false);
   const [activeRoster, setActiveRoster] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [teamNameInput, setTeamNameInput] = useState("");
+  const [savingTeamName, setSavingTeamName] = useState(false);
   const { openPlayerCard } = usePlayerCard();
 
   const loadLeague = useCallback(() => {
@@ -83,6 +88,7 @@ export default function LeagueDetailPage() {
         setLeague(d.league);
         setRosters(d.rosters ?? []);
         setIsCommissioner(d.isCommissioner);
+        setMyRosterId(d.myRosterId ?? null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -95,6 +101,23 @@ export default function LeagueDetailPage() {
     await navigator.clipboard.writeText(league.inviteCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const saveTeamName = async () => {
+    setSavingTeamName(true);
+    const res = await fetch(`/api/leagues/${leagueId}/roster`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamName: teamNameInput }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setRosters((prev) =>
+        prev.map((r) => r.id === myRosterId ? { ...r, teamName: data.teamName } : r)
+      );
+      setEditingTeamName(false);
+    }
+    setSavingTeamName(false);
   };
 
   const startDraft = async () => {
@@ -311,13 +334,44 @@ export default function LeagueDetailPage() {
                           <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-extrabold text-brand-red">
                             {(roster.teamName ?? roster.user.username)[0].toUpperCase()}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-[var(--text-primary)]">
-                              {roster.teamName ?? roster.user.username}
-                              {league.commissionerId === roster.userId && (
-                                <span className="ml-1 text-xs text-[var(--text-muted)]">(C)</span>
-                              )}
-                            </p>
+                          <div className="min-w-0">
+                            {roster.id === myRosterId && editingTeamName ? (
+                              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  autoFocus
+                                  value={teamNameInput}
+                                  onChange={(e) => setTeamNameInput(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") saveTeamName(); if (e.key === "Escape") setEditingTeamName(false); }}
+                                  maxLength={40}
+                                  placeholder={roster.user.username}
+                                  className="input-base h-7 text-xs px-2 w-32"
+                                />
+                                <button onClick={saveTeamName} disabled={savingTeamName} className="text-green-400 hover:text-green-300 shrink-0">
+                                  {savingTeamName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => setEditingTeamName(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                                  {roster.teamName ?? roster.user.username}
+                                  {league.commissionerId === roster.userId && (
+                                    <span className="ml-1 text-xs text-[var(--text-muted)]">(C)</span>
+                                  )}
+                                </p>
+                                {roster.id === myRosterId && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTeamNameInput(roster.teamName ?? ""); setEditingTeamName(true); }}
+                                    className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                    title="Rename team"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                             <p className="text-xs text-[var(--text-muted)]">
                               {roster.teamName ? `@${roster.user.username} · ` : ""}{roster.players.length}/{league.rosterSize} drafted
                             </p>

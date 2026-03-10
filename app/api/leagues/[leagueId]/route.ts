@@ -49,7 +49,9 @@ export async function GET(
     orderBy: { totalIlDays: "desc" },
   });
 
-  return NextResponse.json({ league, rosters, isCommissioner: league.commissionerId === user.id });
+  const myRoster = rosters.find((r) => r.user.id === user.id);
+
+  return NextResponse.json({ league, rosters, isCommissioner: league.commissionerId === user.id, myRosterId: myRoster?.id ?? null });
 }
 
 // DELETE /api/leagues/[leagueId] — delete league (commissioner only)
