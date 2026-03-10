@@ -1,0 +1,24 @@
+name: Frequent Cron Jobs
+
+on:
+  schedule:
+    # Runs every 5 minutes — replaces Vercel crons (Hobby plan only allows daily)
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # allow manual trigger from GitHub Actions UI
+
+jobs:
+  open-drafts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open scheduled drafts
+        run: |
+          curl -sf "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/open-drafts?secret=${{ secrets.CRON_SECRET }}" \
+            -o /dev/null || echo "open-drafts returned non-2xx (ignored)"
+
+  draft-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send draft reminder emails
+        run: |
+          curl -sf "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/draft-reminders?secret=${{ secrets.CRON_SECRET }}" \
+            -o /dev/null || echo "draft-reminders returned non-2xx (ignored)"

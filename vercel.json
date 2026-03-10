@@ -3,14 +3,6 @@
     {
       "path": "/api/cron/sync-il",
       "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/open-drafts",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/draft-reminders",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
