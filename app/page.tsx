@@ -102,8 +102,8 @@ export default async function LandingPage() {
       </section>
 
       {/* Stats */}
-      <section className="max-w-6xl mx-auto px-6 pb-16">
-        <div className="grid grid-cols-3 gap-4">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {[
             { label: "Total Users", value: stats.users.toLocaleString() || "—" },
             { label: "Active Leagues", value: stats.leagues.toLocaleString() || "—" },
@@ -120,11 +120,11 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="max-w-6xl mx-auto px-6 pb-24">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
         <h2 className="text-2xl font-extrabold text-[var(--text-primary)] text-center mb-10">
           How it works
         </h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {howItWorks.map((step, i) => {
             const Icon = step.icon;
             return (

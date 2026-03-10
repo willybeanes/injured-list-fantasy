@@ -110,7 +110,7 @@ export default function LeaguesPage() {
         }
       />
 
-      <div className="p-6 max-w-4xl space-y-4">
+      <div className="p-4 sm:p-6 max-w-4xl space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
@@ -143,9 +143,9 @@ export default function LeaguesPage() {
         ) : (
           leagues.map((league) => (
             <div key={league.id} className="card hover:border-[var(--border-2)] transition-colors">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Link
                       href={league.status === "drafting" ? `/draft/${league.id}` : `/leagues/${league.id}`}
                       className="text-base font-extrabold text-[var(--text-primary)] hover:text-brand-red transition-colors truncate"
@@ -173,7 +173,7 @@ export default function LeaguesPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 ml-4 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {/* Invite code + tooltip */}
                   <div className="flex items-center gap-1.5">
                     <button

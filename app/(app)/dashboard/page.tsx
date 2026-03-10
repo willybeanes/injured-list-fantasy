@@ -279,18 +279,18 @@ export default async function DashboardPage({
         subtitle={selectedRosterName}
         actions={
           <div className="flex gap-2">
-            <Link href="/leagues?join=1" className="btn-secondary text-sm py-1.5 px-3">
+            <Link href="/leagues?join=1" className="btn-secondary text-sm py-1.5 px-3 hidden sm:inline-flex">
               Join League
             </Link>
             <Link href="/leagues?create=1" className="btn-primary text-sm py-1.5 px-3">
               <Plus className="w-3.5 h-3.5" />
-              Create League
+              <span className="hidden sm:inline">Create League</span>
             </Link>
           </div>
         }
       />
 
-      <div className="p-6 max-w-6xl space-y-6">
+      <div className="p-4 sm:p-6 max-w-6xl space-y-4 sm:space-y-6">
         {/* ── Team filter tabs (only when in multiple leagues) ── */}
         {hasMultipleRosters && (
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -323,7 +323,7 @@ export default async function DashboardPage({
         )}
 
         {/* ── Stat cards ── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {statCards.map((card) => {
             const Icon = card.icon;
             return (
@@ -341,9 +341,9 @@ export default async function DashboardPage({
           })}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* ── Weekly chart ── */}
-          <div className="card col-span-2">
+          <div className="card md:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-extrabold text-[var(--text-primary)]">
@@ -447,24 +447,24 @@ export default async function DashboardPage({
               <thead>
                 <tr>
                   <th>Player</th>
-                  <th>Fantasy Team</th>
+                  <th className="hidden sm:table-cell">Fantasy Team</th>
                   <th>Status</th>
-                  <th>Date</th>
-                  <th className="text-right">Season Days</th>
+                  <th className="hidden sm:table-cell">Date</th>
+                  <th className="text-right">Days</th>
                 </tr>
               </thead>
               <tbody>
                 {recentInjuriesWithTeams.map((log) => (
                   <tr key={log.id}>
                     <td>
-                      <p className="font-semibold text-[var(--text-primary)]">
+                      <p className="font-semibold text-[var(--text-primary)] truncate max-w-[120px] sm:max-w-none">
                         {log.mlbPlayer.fullName}
                       </p>
                       <p className="text-xs text-[var(--text-muted)]">
                         {log.mlbPlayer.teamAbbr}
                       </p>
                     </td>
-                    <td className="text-xs text-blue-400">
+                    <td className="hidden sm:table-cell text-xs text-blue-400">
                       {log.teamNames.length === 0
                         ? "—"
                         : log.teamNames.length === 1
@@ -476,7 +476,7 @@ export default async function DashboardPage({
                         {log.ilStatus.toUpperCase().replace("IL", "IL-")}
                       </span>
                     </td>
-                    <td className="text-[var(--text-secondary)]">
+                    <td className="hidden sm:table-cell text-[var(--text-secondary)]">
                       {format(new Date(log.logDate), "MMM d")}
                     </td>
                     <td className="text-right font-semibold text-brand-red">

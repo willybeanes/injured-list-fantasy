@@ -122,7 +122,7 @@ export default async function StandingsPage({
     <div>
       <Topbar title="Standings" subtitle="League & Global Leaderboard" />
 
-      <div className="p-6 max-w-5xl space-y-6">
+      <div className="p-4 sm:p-6 max-w-5xl space-y-4 sm:space-y-6">
         {/* My League Standings */}
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
@@ -149,8 +149,8 @@ export default async function StandingsPage({
                 <tr>
                   <th className="w-8">#</th>
                   <th>Team</th>
-                  <th className="text-right">Players</th>
-                  <th className="text-right">This Week</th>
+                  <th className="hidden sm:table-cell text-right">Players</th>
+                  <th className="hidden sm:table-cell text-right">This Week</th>
                   <th className="text-right">Season IL Days</th>
                 </tr>
               </thead>
@@ -163,10 +163,10 @@ export default async function StandingsPage({
                     <td><RankBadge rank={row.rank} /></td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-extrabold text-brand-red">
+                        <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-extrabold text-brand-red shrink-0">
                           {row.username[0].toUpperCase()}
                         </div>
-                        <span className="text-sm font-semibold text-[var(--text-primary)]">
+                        <span className="text-sm font-semibold text-[var(--text-primary)] truncate">
                           {row.username}
                           {row.userId === user.id && (
                             <span className="ml-1.5 text-xs text-[var(--text-muted)]">(you)</span>
@@ -174,10 +174,10 @@ export default async function StandingsPage({
                         </span>
                       </div>
                     </td>
-                    <td className="text-right text-sm text-[var(--text-secondary)]">
+                    <td className="hidden sm:table-cell text-right text-sm text-[var(--text-secondary)]">
                       {row.playerCount}
                     </td>
-                    <td className="text-right text-sm font-semibold text-[var(--text-primary)]">
+                    <td className="hidden sm:table-cell text-right text-sm font-semibold text-[var(--text-primary)]">
                       +{row.weeklyIlDays}
                     </td>
                     <td className="text-right">
@@ -194,7 +194,7 @@ export default async function StandingsPage({
 
         {/* Global Leaderboard */}
         <div className="card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-blue-500" />
               <div>
@@ -245,7 +245,7 @@ export default async function StandingsPage({
                 <tr>
                   <th className="w-8">#</th>
                   <th>Player</th>
-                  <th>League</th>
+                  <th className="hidden sm:table-cell">League</th>
                   <th className="text-right">Season IL Days</th>
                 </tr>
               </thead>
@@ -258,10 +258,10 @@ export default async function StandingsPage({
                     <td><RankBadge rank={row.rank} /></td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-extrabold text-brand-red">
+                        <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-extrabold text-brand-red shrink-0">
                           {row.username[0].toUpperCase()}
                         </div>
-                        <span className="text-sm font-semibold text-[var(--text-primary)]">
+                        <span className="text-sm font-semibold text-[var(--text-primary)] truncate">
                           {row.username}
                           {row.userId === user.id && (
                             <span className="ml-1.5 text-xs text-[var(--text-muted)]">(you)</span>
@@ -269,7 +269,7 @@ export default async function StandingsPage({
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td className="hidden sm:table-cell">
                       <div>
                         <span className="text-sm text-[var(--text-secondary)]">
                           {row.leagueName}
