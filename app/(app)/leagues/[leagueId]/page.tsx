@@ -172,27 +172,29 @@ export default function LeagueDetailPage() {
         subtitle={`${league._count.members}/${league.maxTeams} teams · ${league.seasonYear} season`}
         actions={
           <div className="flex gap-1.5 flex-wrap justify-end">
-            {/* Invite code */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={copyCode}
-                className="btn-secondary text-sm py-1.5 px-3"
-                title="Copy invite code"
-              >
-                {copiedCode ? (
-                  <Check className="w-3.5 h-3.5 text-green-500" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                {league.inviteCode}
-              </button>
-              <div className="relative group">
-                <Info className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
-                <div className="absolute right-0 top-6 z-50 hidden group-hover:block w-52 p-2.5 rounded-[9px] bg-[var(--surface)] border border-[var(--border)] shadow-lg text-xs text-[var(--text-secondary)] leading-relaxed">
-                  Share this code with friends to invite them to your league.
+            {/* Invite code — only show while the league is still filling up */}
+            {league.status === "upcoming" && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={copyCode}
+                  className="btn-secondary text-sm py-1.5 px-3"
+                  title="Copy invite code"
+                >
+                  {copiedCode ? (
+                    <Check className="w-3.5 h-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  {league.inviteCode}
+                </button>
+                <div className="relative group">
+                  <Info className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
+                  <div className="absolute right-0 top-6 z-50 hidden group-hover:block w-52 p-2.5 rounded-[9px] bg-[var(--surface)] border border-[var(--border)] shadow-lg text-xs text-[var(--text-secondary)] leading-relaxed">
+                    Share this code with friends to invite them to your league.
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Invite by Email (commissioner + upcoming only) */}
             {isCommissioner && league.status === "upcoming" && (
@@ -258,7 +260,7 @@ export default function LeagueDetailPage() {
 
         {/* Scheduled draft countdown banner */}
         {league.status === "upcoming" && league.draftScheduledAt && (
-          <ScheduledDraftBanner draftScheduledAt={league.draftScheduledAt} />
+          <ScheduledDraftBanner draftScheduledAt={league.draftScheduledAt} leagueId={leagueId} />
         )}
 
         {/* League info cards */}
@@ -521,7 +523,13 @@ function formatCountdown(ms: number): string {
 
 // ─── Scheduled Draft Banner ───────────────────────────────────────────────────
 
-function ScheduledDraftBanner({ draftScheduledAt }: { draftScheduledAt: string }) {
+function ScheduledDraftBanner({
+  draftScheduledAt,
+  leagueId,
+}: {
+  draftScheduledAt: string;
+  leagueId: string;
+}) {
   const [timeLeft, setTimeLeft] = useState<number>(
     Math.max(0, new Date(draftScheduledAt).getTime() - Date.now())
   );
@@ -548,20 +556,55 @@ function ScheduledDraftBanner({ draftScheduledAt }: { draftScheduledAt: string }
     .formatToParts(scheduled)
     .find((p) => p.type === "timeZoneName")?.value ?? "";
 
+  const isImminent = timeLeft <= 5 * 60 * 1000; // within 5 minutes
+
   return (
-    <div className="rounded-card p-3 flex items-center gap-2.5 bg-blue-500/10 border border-blue-500/20">
-      <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
+    <div
+      className={cn(
+        "rounded-card p-3 flex items-center gap-2.5 border",
+        isImminent
+          ? "bg-amber-500/10 border-amber-500/30"
+          : "bg-blue-500/10 border-blue-500/20"
+      )}
+    >
+      <Calendar
+        className={cn("w-4 h-4 shrink-0", isImminent ? "text-amber-400" : "text-blue-400")}
+      />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-blue-300 font-semibold">
-          Draft scheduled for {formattedDate} at {formattedTime}{" "}
-          <span className="font-normal opacity-70">{tzAbbr}</span>
-        </p>
-        <p className="text-xs text-blue-400/70 mt-0.5">
-          Draft room opens 5 min before · starts in{" "}
-          <span className="font-extrabold text-blue-300">{formatCountdown(timeLeft)}</span>
-        </p>
+        {isImminent ? (
+          <>
+            <p className="text-sm text-amber-300 font-semibold">
+              Draft starting in{" "}
+              <span className="font-extrabold">{formatCountdown(timeLeft)}</span>
+            </p>
+            <p className="text-xs text-amber-400/70 mt-0.5">
+              The draft room is now open — get in there!
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-blue-300 font-semibold">
+              Draft scheduled for {formattedDate} at {formattedTime}{" "}
+              <span className="font-normal opacity-70">{tzAbbr}</span>
+            </p>
+            <p className="text-xs text-blue-400/70 mt-0.5">
+              Draft room opens 5 min before · starts in{" "}
+              <span className="font-extrabold text-blue-300">{formatCountdown(timeLeft)}</span>
+            </p>
+          </>
+        )}
       </div>
-      <Clock className="w-4 h-4 text-blue-400/60 shrink-0" />
+      {isImminent ? (
+        <Link
+          href={`/draft/${leagueId}`}
+          className="flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500/30 transition-colors px-2.5 py-1.5 rounded-[8px] text-xs font-extrabold text-amber-300 shrink-0"
+        >
+          Enter Draft Room
+          <ArrowRight className="w-3 h-3" />
+        </Link>
+      ) : (
+        <Clock className="w-4 h-4 text-blue-400/60 shrink-0" />
+      )}
     </div>
   );
 }

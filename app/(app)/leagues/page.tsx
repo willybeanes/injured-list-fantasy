@@ -174,30 +174,32 @@ export default function LeaguesPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Invite code + tooltip */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => copyCode(league.inviteCode)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] text-xs font-semibold transition-colors",
-                        "bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)]"
-                      )}
-                      title="Copy invite code"
-                    >
-                      {copiedCode === league.inviteCode ? (
-                        <Check className="w-3 h-3 text-green-500" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                      {league.inviteCode}
-                    </button>
-                    <div className="relative group">
-                      <Info className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
-                      <div className="absolute right-0 top-6 z-50 hidden group-hover:block w-52 p-2.5 rounded-[9px] bg-[var(--surface)] border border-[var(--border)] shadow-lg text-xs text-[var(--text-secondary)] leading-relaxed">
-                        Share this code with friends to invite them to your league.
+                  {/* Invite code + tooltip — only while filling up */}
+                  {league.status === "upcoming" && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => copyCode(league.inviteCode)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] text-xs font-semibold transition-colors",
+                          "bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)]"
+                        )}
+                        title="Copy invite code"
+                      >
+                        {copiedCode === league.inviteCode ? (
+                          <Check className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        {league.inviteCode}
+                      </button>
+                      <div className="relative group">
+                        <Info className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
+                        <div className="absolute right-0 top-6 z-50 hidden group-hover:block w-52 p-2.5 rounded-[9px] bg-[var(--surface)] border border-[var(--border)] shadow-lg text-xs text-[var(--text-secondary)] leading-relaxed">
+                          Share this code with friends to invite them to your league.
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {league.status === "drafting" && (
                     <Link
