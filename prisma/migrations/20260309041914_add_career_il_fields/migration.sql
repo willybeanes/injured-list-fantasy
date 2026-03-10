@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "MlbPlayer" ADD COLUMN     "careerIlDays" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "careerSeasons" INTEGER NOT NULL DEFAULT 0;

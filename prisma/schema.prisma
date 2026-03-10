@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum DraftFormat {
+  snake
+  auction
+}
+
+enum ScoringType {
+  season_total
+  weekly_h2h
+}
+
+enum LeagueStatus {
+  upcoming
+  drafting
+  active
+  completed
+}
+
+enum IlStatus {
+  active
+  il10
+  il15
+  il60
+  dtd
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  commissionedLeagues League[]       @relation("Commissioner")
+  leagueMembers       LeagueMember[]
+  rosters             Roster[]
+  globalScore         GlobalScore?
+  sentInvites         LeagueInvite[] @relation("SentInvites")
+}
+
+model League {
+  id             String       @id @default(uuid())
+  name           String
+  commissionerId String
+  commissioner   User         @relation("Commissioner", fields: [commissionerId], references: [id])
+  maxTeams       Int          @default(12)
+  rosterSize     Int          @default(10)
+  draftFormat    DraftFormat  @default(snake)
+  scoringType    ScoringType  @default(season_total)
+  inviteCode        String       @unique
+  status            LeagueStatus @default(upcoming)
+  seasonYear        Int
+  pickTimerSeconds  Int          @default(90)
+  draftScheduledAt  DateTime?
+  createdAt         DateTime     @default(now())
+
+  members LeagueMember[]
+  rosters Roster[]
+  invites LeagueInvite[]
+}
+
+model LeagueMember {
+  id       String   @id @default(uuid())
+  leagueId String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, userId])
+}
+
+model Roster {
+  id           String   @id @default(uuid())
+  leagueId     String
+  userId       String
+  teamName     String?
+  totalIlDays  Int      @default(0)
+  weeklyIlDays Int      @default(0)
+  rank         Int?
+  updatedAt    DateTime @updatedAt
+
+  league  League         @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  players RosterPlayer[]
+
+  @@unique([leagueId, userId])
+}
+
+model RosterPlayer {
+  id          String   @id @default(uuid())
+  rosterId    String
+  mlbPlayerId Int
+  draftedAt   DateTime @default(now())
+
+  roster    Roster    @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  mlbPlayer MlbPlayer @relation(fields: [mlbPlayerId], references: [id])
+}
+
+model MlbPlayer {
+  id              Int      @id
+  fullName        String
+  teamName        String?
+  teamAbbr        String?
+  position        String?
+  currentIlStatus IlStatus @default(active)
+  seasonIlDays    Int      @default(0)
+  careerIlDays    Int      @default(0)
+  careerSeasons   Int      @default(0)
+  age             Int?
+  birthDate       String?
+  lastSyncedAt    DateTime?
+
+  rosterPlayers RosterPlayer[]
+  ilDayLogs     IlDayLog[]
+}
+
+model IlDayLog {
+  id          String   @id @default(uuid())
+  mlbPlayerId Int
+  logDate     DateTime @db.Date
+  ilStatus    IlStatus
+  createdAt   DateTime @default(now())
+
+  mlbPlayer MlbPlayer @relation(fields: [mlbPlayerId], references: [id])
+
+  @@unique([mlbPlayerId, logDate])
+}
+
+model GlobalScore {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  seasonYear  Int
+  totalIlDays Int      @default(0)
+  globalRank  Int?
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeagueInvite {
+  id          String   @id @default(uuid())
+  leagueId    String
+  email       String
+  token       String   @unique
+  status      String   @default("pending")
+  invitedById String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  invitedBy User   @relation("SentInvites", fields: [invitedById], references: [id])
+
+  @@unique([leagueId, email])
+  @@index([token])
+  @@index([email])
+}

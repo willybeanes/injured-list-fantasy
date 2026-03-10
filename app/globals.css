@@ -1,0 +1,241 @@
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────────── */
+:root {
+  /* Light mode defaults */
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #f2f0ec;
+  --border: #dedad4;
+  --border-2: #d0cbc4;
+  --text-primary: #181614;
+  --text-secondary: #5c564e;
+  --text-muted: #9c9488;
+
+  --brand-red: #dc2f1f;
+  --brand-red-hover: #ef4432;
+  --amber: #d97706;
+  --green: #16a34a;
+  --blue: #2563eb;
+
+  --radius-card: 14px;
+  --radius-input: 9px;
+  --radius-btn: 9px;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode via class (controlled by JS, defaulting to dark) */
+.dark {
+  --bg: #0e1014;
+  --surface: #191d26;
+  --surface-2: #1f2433;
+  --border: #272e3d;
+  --border-2: #313a4d;
+  --text-primary: #edf0f5;
+  --text-secondary: #8892a4;
+  --text-muted: #505c6e;
+
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: "Figtree", system-ui, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: "Figtree", system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 800;
+    line-height: 1.2;
+  }
+}
+
+/* ─── Components ─────────────────────────────────────────────────────────────── */
+@layer components {
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 1.25rem;
+  }
+
+  .card-2 {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 1.25rem;
+  }
+
+  .btn-primary {
+    background-color: var(--brand-red);
+    color: #fff;
+    font-weight: 600;
+    border-radius: var(--radius-btn);
+    padding: 0.5rem 1rem;
+    transition: background-color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    font-size: 0.875rem;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--brand-red-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--surface-2);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-radius: var(--radius-btn);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.875rem;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--border-2);
+    background-color: var(--border);
+  }
+
+  .input-base {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    padding: 0.5rem 0.75rem;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s ease;
+    color-scheme: dark;
+  }
+
+  .input-base:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 2px rgba(220, 47, 31, 0.15);
+  }
+
+  .input-base::placeholder {
+    color: var(--text-muted);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+
+  .nav-item:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-2);
+  }
+
+  .nav-item.active {
+    color: var(--brand-red);
+    background-color: rgba(220, 47, 31, 0.08);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-red {
+    background-color: rgba(220, 47, 31, 0.12);
+    color: var(--brand-red);
+  }
+
+  .badge-amber {
+    background-color: rgba(217, 119, 6, 0.12);
+    color: var(--amber);
+  }
+
+  .badge-green {
+    background-color: rgba(22, 163, 74, 0.12);
+    color: var(--green);
+  }
+
+  .badge-muted {
+    background-color: var(--surface-2);
+    color: var(--text-muted);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  .table-base {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-base th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-base td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+  }
+
+  .table-base tr:last-child td {
+    border-bottom: none;
+  }
+
+  .table-base tbody tr:hover td {
+    background-color: var(--surface-2);
+  }
+}
