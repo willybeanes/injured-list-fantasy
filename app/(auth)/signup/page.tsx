@@ -17,16 +17,25 @@ function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<"loading" | "valid" | "cancelled" | "expired" | null>(
+    inviteToken ? "loading" : null
+  );
 
   const supabase = createClient();
 
-  // Pre-fill email from invite if possible
+  // Check invite status and pre-fill email
   useEffect(() => {
-    if (!inviteToken || email) return;
+    if (!inviteToken) return;
     fetch(`/api/invites/${inviteToken}`)
       .then((r) => r.json())
-      .then((d) => { if (d.email) setEmail(d.email); })
-      .catch(() => {});
+      .then((d) => {
+        if (d.error) { setInviteStatus("expired"); return; }
+        if (d.status === "cancelled") { setInviteStatus("cancelled"); return; }
+        if (d.expired || d.status !== "pending") { setInviteStatus("expired"); return; }
+        if (d.email) setEmail(d.email);
+        setInviteStatus("valid");
+      })
+      .catch(() => setInviteStatus("expired"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inviteToken]);
 
@@ -93,6 +102,51 @@ function SignupForm() {
 
     setLoading(false);
   };
+
+  if (inviteStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
+      </div>
+    );
+  }
+
+  if (inviteStatus === "cancelled" || inviteStatus === "expired") {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
+        <div className="w-full max-w-sm space-y-4">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-red rounded-[12px] mb-4">
+              <Swords className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-extrabold text-[var(--text-primary)]">Injured List Fantasy</h1>
+          </div>
+          <div className="card text-center py-8 space-y-3">
+            <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+            <p className="font-extrabold text-[var(--text-primary)]">
+              {inviteStatus === "cancelled" ? "Invitation cancelled" : "Invite expired"}
+            </p>
+            <p className="text-sm text-[var(--text-muted)]">
+              {inviteStatus === "cancelled"
+                ? "This invitation has been cancelled by the commissioner."
+                : "This invite link has expired. Ask the commissioner to send a new one."}
+            </p>
+          </div>
+          <div className="card space-y-3">
+            <p className="text-xs text-[var(--text-muted)] text-center">
+              Still want to play? Create an account or sign in.
+            </p>
+            <Link href="/signup" className="btn-primary w-full justify-center">
+              Create account
+            </Link>
+            <Link href="/login" className="btn-secondary w-full justify-center">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
