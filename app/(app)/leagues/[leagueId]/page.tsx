@@ -725,6 +725,20 @@ function InviteByEmailModal({
   const [error, setError] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const handleCancel = async (inviteId: string) => {
+    setCancellingId(inviteId);
+    const res = await fetch(`/api/leagues/${leagueId}/invite`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inviteId }),
+    });
+    if (res.ok) {
+      setPendingInvites((prev) => prev.filter((inv) => inv.id !== inviteId));
+    }
+    setCancellingId(null);
+  };
 
   const loadInvites = async () => {
     const res = await fetch(`/api/leagues/${leagueId}/invite`);
@@ -848,7 +862,21 @@ function InviteByEmailModal({
                       Expires {new Date(inv.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <span className="badge badge-amber shrink-0 ml-2">Pending</span>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className="badge badge-amber">Pending</span>
+                    <button
+                      onClick={() => handleCancel(inv.id)}
+                      disabled={cancellingId === inv.id}
+                      className="w-6 h-6 rounded-[6px] flex items-center justify-center text-[var(--text-muted)] hover:text-brand-red hover:bg-red-500/10 transition-colors"
+                      title="Cancel invite"
+                    >
+                      {cancellingId === inv.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

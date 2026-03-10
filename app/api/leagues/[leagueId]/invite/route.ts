@@ -117,6 +117,36 @@ export async function POST(
   return NextResponse.json({ ok: true, existingUser: !!existingUser });
 }
 
+// DELETE /api/leagues/[leagueId]/invite — commissioner cancels a pending invite
+export async function DELETE(
+  request: Request,
+  { params }: { params: { leagueId: string } }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { leagueId } = params;
+  const { inviteId } = await request.json();
+  if (!inviteId) return NextResponse.json({ error: "inviteId required" }, { status: 400 });
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { commissionerId: true },
+  });
+  if (!league) return NextResponse.json({ error: "League not found" }, { status: 404 });
+  if (league.commissionerId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await prisma.leagueInvite.updateMany({
+    where: { id: inviteId, leagueId, status: "pending" },
+    data: { status: "cancelled" },
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
 // GET /api/leagues/[leagueId]/invite — commissioner lists pending invites
 export async function GET(
   _request: Request,

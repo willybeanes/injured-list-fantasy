@@ -116,22 +116,41 @@ export default function InvitePage() {
               Go to homepage
             </Link>
           </div>
-        ) : invite.expired || invite.status !== "pending" ? (
+        ) : invite.status === "accepted" ? (
           <div className="card text-center py-8 space-y-3">
-            <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-            <p className="font-extrabold text-[var(--text-primary)]">
-              {invite.status === "accepted" ? "Already accepted" : "Invite expired"}
-            </p>
-            <p className="text-sm text-[var(--text-muted)]">
-              {invite.status === "accepted"
-                ? "This invite has already been accepted."
-                : "This invite link has expired. Ask the commissioner to send a new one."}
-            </p>
-            {invite.status === "accepted" && loggedIn && (
+            <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
+            <p className="font-extrabold text-[var(--text-primary)]">Already accepted</p>
+            <p className="text-sm text-[var(--text-muted)]">This invite has already been accepted.</p>
+            {loggedIn && (
               <Link href={`/leagues/${invite.leagueId}`} className="btn-primary inline-flex mt-2">
                 Go to League
               </Link>
             )}
+          </div>
+        ) : invite.expired || invite.status === "cancelled" ? (
+          <div className="space-y-4">
+            <div className="card text-center py-8 space-y-3">
+              <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+              <p className="font-extrabold text-[var(--text-primary)]">
+                {invite.status === "cancelled" ? "Invitation cancelled" : "Invite expired"}
+              </p>
+              <p className="text-sm text-[var(--text-muted)]">
+                {invite.status === "cancelled"
+                  ? "This invitation has been cancelled by the commissioner."
+                  : "This invite link has expired. Ask the commissioner to send a new one."}
+              </p>
+            </div>
+            <div className="card space-y-3">
+              <p className="text-xs text-[var(--text-muted)] text-center">
+                Still want to play? Create an account or sign in.
+              </p>
+              <Link href="/signup" className="btn-primary w-full justify-center">
+                Create account
+              </Link>
+              <Link href="/login" className="btn-secondary w-full justify-center">
+                Sign in
+              </Link>
+            </div>
           </div>
         ) : accepted ? (
           <div className="card text-center py-8 space-y-3">
