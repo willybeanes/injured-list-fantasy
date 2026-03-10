@@ -95,10 +95,9 @@ export default function LeaguesPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowJoin(true)}
-              className="btn-secondary text-sm py-1.5 px-3"
+              className="btn-secondary text-sm py-1.5 px-3 hidden sm:inline-flex"
             >
-              <Users className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Join League</span>
+              Join League
             </button>
             <button
               onClick={() => setShowCreate(true)}
