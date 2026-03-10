@@ -93,12 +93,14 @@ export default function LeaguesPage() {
         subtitle={`${leagues.length} league${leagues.length === 1 ? "" : "s"}`}
         actions={
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowJoin(true)}
-              className="btn-secondary text-sm py-1.5 px-3 hidden sm:inline-flex"
-            >
-              Join League
-            </button>
+            <span className="hidden sm:inline-flex">
+              <button
+                onClick={() => setShowJoin(true)}
+                className="btn-secondary text-sm py-1.5 px-3"
+              >
+                Join League
+              </button>
+            </span>
             <button
               onClick={() => setShowCreate(true)}
               className="btn-primary text-sm py-1.5 px-3"
