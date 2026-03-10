@@ -18,6 +18,7 @@ import {
   Clock,
   Mail,
   Send,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber, formatIlStatus } from "@/lib/utils";
@@ -533,6 +534,22 @@ function LeagueSettingsModal({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const res = await fetch(`/api/leagues/${league.id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/leagues");
+    } else {
+      const data = await res.json();
+      setError(data.error ?? "Failed to delete league");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
 
   const originalDate = league.draftScheduledAt ? toLocalDateString(league.draftScheduledAt) : "";
   const originalTime = league.draftScheduledAt ? toLocalTimeSlot(league.draftScheduledAt) : "12:00";
@@ -695,6 +712,43 @@ function LeagueSettingsModal({
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
           </button>
+        </div>
+
+        {/* Danger zone */}
+        <div className="mt-4 pt-4 border-t border-[var(--border)]">
+          {!confirmDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-input text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete League
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-center text-[var(--text-muted)]">
+                Are you sure? This will permanently delete <strong className="text-[var(--text-primary)]">{league.name}</strong> and all its data.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="btn-secondary flex-1 justify-center text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-input text-sm font-semibold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                >
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, delete"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

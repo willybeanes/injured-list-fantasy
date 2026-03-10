@@ -106,15 +106,25 @@ export default function InvitePage() {
             <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
           </div>
         ) : notFound || !invite ? (
-          <div className="card text-center py-8 space-y-3">
-            <AlertCircle className="w-10 h-10 text-[var(--text-muted)] mx-auto" />
-            <p className="font-extrabold text-[var(--text-primary)]">Invite not found</p>
-            <p className="text-sm text-[var(--text-muted)]">
-              This invite link is invalid or has been removed.
-            </p>
-            <Link href="/" className="btn-secondary inline-flex mt-2">
-              Go to homepage
-            </Link>
+          <div className="space-y-4">
+            <div className="card text-center py-8 space-y-3">
+              <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+              <p className="font-extrabold text-[var(--text-primary)]">Invitation no longer valid</p>
+              <p className="text-sm text-[var(--text-muted)]">
+                This invite link has expired, been cancelled, or the league no longer exists.
+              </p>
+            </div>
+            <div className="card space-y-3">
+              <p className="text-xs text-[var(--text-muted)] text-center">
+                Still want to play? Create an account or sign in.
+              </p>
+              <Link href="/signup" className="btn-primary w-full justify-center">
+                Create account
+              </Link>
+              <Link href="/login" className="btn-secondary w-full justify-center">
+                Sign in
+              </Link>
+            </div>
           </div>
         ) : invite.status === "accepted" ? (
           <div className="card text-center py-8 space-y-3">

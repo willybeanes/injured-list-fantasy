@@ -52,6 +52,28 @@ export async function GET(
   return NextResponse.json({ league, rosters, isCommissioner: league.commissionerId === user.id });
 }
 
+// DELETE /api/leagues/[leagueId] — delete league (commissioner only)
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { leagueId: string } }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { leagueId } = params;
+
+  const league = await prisma.league.findUnique({ where: { id: leagueId } });
+  if (!league) return NextResponse.json({ error: "League not found" }, { status: 404 });
+  if (league.commissionerId !== user.id) {
+    return NextResponse.json({ error: "Only the commissioner can delete the league" }, { status: 403 });
+  }
+
+  await prisma.league.delete({ where: { id: leagueId } });
+
+  return NextResponse.json({ ok: true });
+}
+
 // PATCH /api/leagues/[leagueId] — update league (commissioner only)
 export async function PATCH(
   request: Request,
