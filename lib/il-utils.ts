@@ -10,12 +10,12 @@ export const BASE_URL = "https://statsapi.mlb.com/api/v1";
 // ─── Season definitions ────────────────────────────────────────────────────────
 
 export const SEASONS = [
-  { year: 2021, startDate: "2021-03-20", endDate: "2021-11-15", seasonEnd: new Date("2021-11-03") },
-  { year: 2022, startDate: "2022-03-20", endDate: "2022-11-15", seasonEnd: new Date("2022-11-05") },
-  { year: 2023, startDate: "2023-03-20", endDate: "2023-11-15", seasonEnd: new Date("2023-11-01") },
-  { year: 2024, startDate: "2024-03-20", endDate: "2024-11-15", seasonEnd: new Date("2024-10-30") },
-  { year: 2025, startDate: "2025-03-20", endDate: "2025-11-15", seasonEnd: new Date("2025-11-01") },
-  { year: 2026, startDate: "2026-03-20", endDate: "2026-11-15", seasonEnd: new Date("2026-11-01") },
+  { year: 2021, endDate: "2021-11-15", openingDay: new Date("2021-04-01"), seasonEnd: new Date("2021-10-03") },
+  { year: 2022, endDate: "2022-11-15", openingDay: new Date("2022-04-07"), seasonEnd: new Date("2022-10-05") },
+  { year: 2023, endDate: "2023-11-15", openingDay: new Date("2023-03-30"), seasonEnd: new Date("2023-10-01") },
+  { year: 2024, endDate: "2024-11-15", openingDay: new Date("2024-03-20"), seasonEnd: new Date("2024-09-29") },
+  { year: 2025, endDate: "2025-11-15", openingDay: new Date("2025-03-27"), seasonEnd: new Date("2025-09-28") },
+  { year: 2026, endDate: "2026-11-15", openingDay: new Date("2026-03-26"), seasonEnd: new Date("2026-09-27") },
 ];
 
 // Max IL days attributable to a single season (full season length as safety cap)
@@ -74,7 +74,7 @@ export function mergeIntervals(intervals: Array<[Date, Date]>): Array<[Date, Dat
 // ─── Core parsing ─────────────────────────────────────────────────────────────
 // Returns Map<playerId, ilDaysThisSeason>
 
-export function parseSeasonIlDays(transactions: Transaction[], seasonEnd: Date): Map<number, number> {
+export function parseSeasonIlDays(transactions: Transaction[], seasonEnd: Date, seasonStart?: Date): Map<number, number> {
   const parseDate = (tx: Transaction): Date | null => {
     const raw = txDate(tx);
     if (!raw) return null;
@@ -133,7 +133,12 @@ export function parseSeasonIlDays(transactions: Transaction[], seasonEnd: Date):
     const merged = mergeIntervals(intervals);
     let total = 0;
     for (const [start, end] of merged) {
-      total += Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+      // Clip to season boundaries: don't count days before Opening Day or after season end
+      const clampedStart = seasonStart
+        ? new Date(Math.max(start.getTime(), seasonStart.getTime()))
+        : start;
+      const clampedEnd = new Date(Math.min(end.getTime(), seasonEnd.getTime()));
+      total += Math.max(0, Math.round((clampedEnd.getTime() - clampedStart.getTime()) / 86_400_000));
     }
     daysByPlayer.set(playerId, Math.min(total, MAX_SEASON_IL_DAYS));
   }

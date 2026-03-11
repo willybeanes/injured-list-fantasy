@@ -78,7 +78,8 @@ export async function GET(
     const { season, txs, seasonEnd } = result.value;
 
     // Per-season IL days using shared parsing logic
-    const daysByPlayer = parseSeasonIlDays(txs, seasonEnd);
+    // Clip to [openingDay, seasonEnd] so pre-season placements only count from Opening Day
+    const daysByPlayer = parseSeasonIlDays(txs, seasonEnd, season.openingDay);
     const days = daysByPlayer.get(playerId) ?? 0;
     seasonBreakdown.push({ year: season.year, days });
     // Track seasons where the player had any MLB transaction (i.e., was active)
