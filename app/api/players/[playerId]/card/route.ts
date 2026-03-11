@@ -61,7 +61,9 @@ export async function GET(
   const results = await Promise.allSettled(
     SEASONS.map((season) => {
       const seasonEnd = season.year === today.getFullYear() ? today : season.seasonEnd;
-      return fetchPlayerTransactions(playerId, season.startDate, season.endDate).then(
+      // Query from Jan 1 (not Opening Day) to catch pre-season IL placements
+      // e.g. Trevor Story placed Feb 15, 2023 — before the March 20 season start
+      return fetchPlayerTransactions(playerId, `${season.year}-01-01`, season.endDate).then(
         (txs) => ({ season, txs, seasonEnd })
       );
     })
