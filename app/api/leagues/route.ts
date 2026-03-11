@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, maxTeams, draftFormat, scoringType, pickTimerSeconds } = body;
+  const { name, maxTeams, draftFormat, scoringType, pickTimerSeconds, isPublic } = body;
   const rosterSize = 10; // fixed
 
   if (!name?.trim()) {
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       draftFormat: draftFormat ?? "snake",
       scoringType: scoringType ?? "season_total",
       inviteCode,
+      isPublic: isPublic === true,
       status: "upcoming",
       seasonYear: currentSeasonYear(),
       pickTimerSeconds: pickTimerSeconds ?? 90,

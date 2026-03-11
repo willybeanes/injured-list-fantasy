@@ -11,6 +11,7 @@ import {
   Swords,
   LogOut,
   Mail,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +20,7 @@ import { useRouter } from "next/navigation";
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Leagues", href: "/leagues", icon: Users },
+  { label: "Public Lobby", href: "/lobby", icon: Globe },
   { label: "Standings", href: "/standings", icon: Trophy },
   { label: "Injuries", href: "/injuries", icon: Activity },
   { label: "Profile", href: "/profile", icon: User },

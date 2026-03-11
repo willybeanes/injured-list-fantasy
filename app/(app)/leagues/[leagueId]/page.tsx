@@ -20,6 +20,9 @@ import {
   Send,
   Trash2,
   Pencil,
+  Globe,
+  Lock,
+  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber, formatIlStatus } from "@/lib/utils";
@@ -59,6 +62,8 @@ interface LeagueDetail {
   commissioner: { username: string };
   _count: { members: number };
   draftScheduledAt: string | null;
+  isPublic: boolean;
+  delayCount: number;
 }
 
 export default function LeagueDetailPage() {
@@ -76,6 +81,7 @@ export default function LeagueDetailPage() {
   const [activeRoster, setActiveRoster] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [forceStarting, setForceStarting] = useState(false);
   const [editingTeamName, setEditingTeamName] = useState(false);
   const [teamNameInput, setTeamNameInput] = useState("");
   const [savingTeamName, setSavingTeamName] = useState(false);
@@ -118,6 +124,19 @@ export default function LeagueDetailPage() {
       setEditingTeamName(false);
     }
     setSavingTeamName(false);
+  };
+
+  const handleForceStart = async () => {
+    if (!confirm(`Start the draft now with only ${league?._count.members} teams? This will reduce the max teams and open the draft immediately.`)) return;
+    setForceStarting(true);
+    const res = await fetch(`/api/leagues/${leagueId}/force-start`, { method: "POST" });
+    if (res.ok) {
+      router.push(`/draft/${leagueId}`);
+    } else {
+      const d = await res.json();
+      alert(d.error ?? "Failed to start draft");
+      setForceStarting(false);
+    }
   };
 
   const startDraft = async () => {
@@ -263,12 +282,41 @@ export default function LeagueDetailPage() {
           <ScheduledDraftBanner draftScheduledAt={league.draftScheduledAt} leagueId={leagueId} />
         )}
 
+        {/* Commissioner decision banner: public league hit max delays */}
+        {isCommissioner && league.isPublic && league.status === "upcoming" && league.delayCount >= 3 && !isFull && (
+          <div className="rounded-card p-4 bg-red-500/10 border border-red-500/30 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-extrabold text-red-300">Action required — max auto-delays reached</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  Your league has been auto-delayed 3 times and still has {league._count.members}/{league.maxTeams} teams.
+                  Choose how to proceed:
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleForceStart}
+                disabled={forceStarting}
+                className="btn-primary text-sm py-1.5 px-3 flex items-center gap-1.5"
+              >
+                {forceStarting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                Start with {league._count.members} teams
+              </button>
+              <Link href={`/leagues/${leagueId}?delete=1`} className="btn-secondary text-sm py-1.5 px-3 text-red-400 hover:text-red-300">
+                Cancel League
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* League info cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Status", value: <span className={`badge ${statusColors[league.status]}`}>{league.status}</span> },
+            { label: "Visibility", value: league.isPublic ? <span className="flex items-center gap-1 text-blue-400"><Globe className="w-3 h-3" />Public</span> : <span className="flex items-center gap-1 text-[var(--text-muted)]"><Lock className="w-3 h-3" />Private</span> },
             { label: "Draft Format", value: league.draftFormat === "snake" ? "Snake" : "Auction" },
-            { label: "Scoring", value: league.scoringType === "season_total" ? "Season Total" : "Weekly H2H" },
             { label: "Roster Size", value: `${league.rosterSize} players` },
           ].map((item) => (
             <div key={item.label} className="card-2 text-center">

@@ -298,6 +298,7 @@ function CreateLeagueModal({
   const draftFormat = "snake";
   const scoringType = "season_total";
   const [pickTimerSeconds, setPickTimerSeconds] = useState(90);
+  const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -309,7 +310,7 @@ function CreateLeagueModal({
     const res = await fetch("/api/leagues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, maxTeams, draftFormat, scoringType, pickTimerSeconds }),
+      body: JSON.stringify({ name, maxTeams, draftFormat, scoringType, pickTimerSeconds, isPublic }),
     });
 
     const data = await res.json();
@@ -383,6 +384,33 @@ function CreateLeagueModal({
                 )}
               >
                 {s}s
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visibility toggle */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-[var(--text-secondary)]">
+            League Visibility
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {([false, true] as const).map((pub) => (
+              <button
+                key={String(pub)}
+                type="button"
+                onClick={() => setIsPublic(pub)}
+                className={cn(
+                  "py-2.5 rounded-input text-sm font-extrabold border transition-colors flex flex-col items-center gap-0.5",
+                  isPublic === pub
+                    ? "bg-brand-red text-white border-brand-red"
+                    : "bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                {pub ? "🌐 Public" : "🔒 Private"}
+                <span className={cn("text-[10px] font-medium", isPublic === pub ? "text-white/70" : "text-[var(--text-muted)]")}>
+                  {pub ? "Appears in lobby" : "Invite code only"}
+                </span>
               </button>
             ))}
           </div>

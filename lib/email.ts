@@ -337,3 +337,95 @@ export async function sendWeeklySummary({
     console.error("Failed to send weekly summary:", err);
   }
 }
+
+// ─── Public League Emails ──────────────────────────────────────────────────────
+
+export async function sendDraftDelayedEmail({
+  to, username, leagueName, newDraftTime, spotsLeft, delayNumber, maxDelays, lobbyUrl,
+}: {
+  to: string; username: string; leagueName: string; newDraftTime: string;
+  spotsLeft: number; delayNumber: number; maxDelays: number; lobbyUrl: string;
+}) {
+  const remaining = maxDelays - delayNumber;
+  const urgencyNote = remaining === 0
+    ? `⚠️ This is the final auto-delay. After this, the commissioner will decide whether to start with fewer teams or cancel.`
+    : `This league can be auto-delayed ${remaining} more time${remaining === 1 ? "" : "s"} if it isn't full.`;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `⏰ Draft delayed — ${leagueName} needs ${spotsLeft} more team${spotsLeft === 1 ? "" : "s"}`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">⚔️</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft Delayed</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username},</p>
+          <div style="background:#191d26;border:1px solid #272e3d;border-radius:12px;padding:16px;margin-bottom:16px;">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#edf0f5;">${leagueName}</p>
+            <p style="margin:6px 0 0;color:#8892a4;font-size:13px;">The draft didn't have enough teams to start. It has been automatically delayed.</p>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #272e3d;">
+              <p style="margin:0;font-size:13px;color:#8892a4;">New draft time</p>
+              <p style="margin:4px 0 0;font-size:15px;font-weight:700;color:#edf0f5;">${newDraftTime}</p>
+            </div>
+            <div style="margin-top:10px;">
+              <p style="margin:0;font-size:13px;color:#f59e0b;">⏰ ${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} still open — share the lobby link!</p>
+            </div>
+          </div>
+          <p style="color:#8892a4;font-size:13px;margin:0 0 16px;">${urgencyNote}</p>
+          <a href="${lobbyUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
+            View Public Lobby →
+          </a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft delayed email:", err);
+  }
+}
+
+export async function sendDraftDecisionNeededEmail({
+  to, commissionerUsername, leagueName, memberCount, maxTeams, leagueUrl,
+}: {
+  to: string; commissionerUsername: string; leagueName: string;
+  memberCount: number; maxTeams: number; leagueUrl: string;
+}) {
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `⚠️ Action needed — ${leagueName} isn't full after 3 delays`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">⚔️</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Decision Required</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${commissionerUsername},</p>
+          <div style="background:#191d26;border:1px solid #272e3d;border-radius:12px;padding:16px;margin-bottom:16px;">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#edf0f5;">${leagueName}</p>
+            <p style="margin:6px 0 0;color:#8892a4;font-size:13px;">Your league has been auto-delayed 3 times and still has ${memberCount}/${maxTeams} teams. No more auto-delays remain.</p>
+            <p style="margin:10px 0 0;font-size:13px;color:#edf0f5;font-weight:600;">As commissioner, you can:</p>
+            <ul style="margin:6px 0 0;padding-left:18px;color:#8892a4;font-size:13px;">
+              <li style="margin-bottom:4px;">Start the draft now with ${memberCount} teams</li>
+              <li>Cancel the league</li>
+            </ul>
+          </div>
+          <a href="${leagueUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
+            Go to League →
+          </a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft decision email:", err);
+  }
+}

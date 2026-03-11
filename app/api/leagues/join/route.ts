@@ -2,27 +2,44 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
-// POST /api/leagues/join — join league via invite code
+// POST /api/leagues/join
+// Supports two modes:
+//   { inviteCode }         — private or public league, validated by invite code
+//   { leagueId }           — public league only, no invite code needed
+// Both accept optional { teamName }
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { inviteCode, teamName } = await request.json();
-  if (!inviteCode) {
-    return NextResponse.json({ error: "Invite code is required" }, { status: 400 });
+  const { inviteCode, leagueId, teamName } = await request.json();
+
+  if (!inviteCode && !leagueId) {
+    return NextResponse.json({ error: "Invite code or league ID is required" }, { status: 400 });
   }
 
-  // Normalize to uppercase
-  const normalizedCode = inviteCode.toUpperCase().trim();
-
-  const league = await prisma.league.findUnique({
-    where: { inviteCode: normalizedCode },
-    include: { _count: { select: { members: true } } },
-  });
-
-  if (!league) {
-    return NextResponse.json({ error: "Invalid invite code. Check the code and try again." }, { status: 404 });
+  // Look up league by inviteCode OR by leagueId (public only)
+  let league;
+  if (inviteCode) {
+    const normalizedCode = inviteCode.toUpperCase().trim();
+    league = await prisma.league.findUnique({
+      where: { inviteCode: normalizedCode },
+      include: { _count: { select: { members: true } } },
+    });
+    if (!league) {
+      return NextResponse.json({ error: "Invalid invite code. Check the code and try again." }, { status: 404 });
+    }
+  } else {
+    league = await prisma.league.findUnique({
+      where: { id: leagueId },
+      include: { _count: { select: { members: true } } },
+    });
+    if (!league) {
+      return NextResponse.json({ error: "League not found." }, { status: 404 });
+    }
+    if (!league.isPublic) {
+      return NextResponse.json({ error: "This league is private. You need an invite code to join." }, { status: 403 });
+    }
   }
 
   if (league.status === "completed") {
@@ -44,6 +61,17 @@ export async function POST(request: Request) {
   if (existingMember) {
     return NextResponse.json({ error: "You are already in this league." }, { status: 400 });
   }
+
+  // Ensure user record exists
+  await prisma.user.upsert({
+    where: { id: user.id },
+    create: {
+      id: user.id,
+      email: user.email!,
+      username: user.user_metadata?.username ?? user.email!.split("@")[0],
+    },
+    update: {},
+  });
 
   // Join league
   await prisma.leagueMember.create({

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "League" ADD COLUMN     "delayCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "isPublic" BOOLEAN NOT NULL DEFAULT false,
+ALTER COLUMN "maxTeams" SET DEFAULT 8;

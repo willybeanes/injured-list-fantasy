@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Trophy, Users, Activity, User } from "lucide-react";
+import { LayoutDashboard, Globe, Users, Activity, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Leagues", href: "/leagues", icon: Users },
-  { label: "Standings", href: "/standings", icon: Trophy },
+  { label: "Lobby", href: "/lobby", icon: Globe },
   { label: "Injuries", href: "/injuries", icon: Activity },
   { label: "Profile", href: "/profile", icon: User },
 ];

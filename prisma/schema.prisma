@@ -64,6 +64,8 @@ model League {
   status            LeagueStatus @default(upcoming)
   seasonYear        Int
   pickTimerSeconds  Int          @default(90)
+  isPublic                 Boolean      @default(false)
+  delayCount               Int          @default(0)
   draftScheduledAt         DateTime?
   draftReminderSentAt      DateTime?
   draftFinalReminderSentAt DateTime?
