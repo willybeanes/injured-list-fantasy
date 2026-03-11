@@ -22,7 +22,6 @@ import {
   Pencil,
   Globe,
   Lock,
-  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { formatNumber, formatIlStatus } from "@/lib/utils";
@@ -81,7 +80,9 @@ export default function LeagueDetailPage() {
   const [activeRoster, setActiveRoster] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [forceStarting, setForceStarting] = useState(false);
+  const [dismissedDecisionBanner, setDismissedDecisionBanner] = useState(false);
+  const [resizingLeague, setResizingLeague] = useState(false);
+  const [deletingLeague, setDeletingLeague] = useState(false);
   const [editingTeamName, setEditingTeamName] = useState(false);
   const [teamNameInput, setTeamNameInput] = useState("");
   const [savingTeamName, setSavingTeamName] = useState(false);
@@ -126,16 +127,33 @@ export default function LeagueDetailPage() {
     setSavingTeamName(false);
   };
 
-  const handleForceStart = async () => {
-    if (!confirm(`Start the draft now with only ${league?._count.members} teams? This will reduce the max teams and open the draft immediately.`)) return;
-    setForceStarting(true);
-    const res = await fetch(`/api/leagues/${leagueId}/force-start`, { method: "POST" });
+  const handleResizeLeague = async (newMaxTeams: number) => {
+    setResizingLeague(true);
+    const res = await fetch(`/api/leagues/${leagueId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maxTeams: newMaxTeams }),
+    });
     if (res.ok) {
-      router.push(`/draft/${leagueId}`);
+      loadLeague();
+      setDismissedDecisionBanner(true);
     } else {
       const d = await res.json();
-      alert(d.error ?? "Failed to start draft");
-      setForceStarting(false);
+      alert(d.error ?? "Failed to resize league");
+    }
+    setResizingLeague(false);
+  };
+
+  const handleDeleteLeague = async () => {
+    if (!confirm("Are you sure you want to cancel this league? This cannot be undone.")) return;
+    setDeletingLeague(true);
+    const res = await fetch(`/api/leagues/${leagueId}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/leagues");
+    } else {
+      const d = await res.json();
+      alert(d.error ?? "Failed to cancel league");
+      setDeletingLeague(false);
     }
   };
 
@@ -283,30 +301,39 @@ export default function LeagueDetailPage() {
         )}
 
         {/* Commissioner decision banner: public league hit max delays */}
-        {isCommissioner && league.isPublic && league.status === "upcoming" && league.delayCount >= 3 && !isFull && (
-          <div className="rounded-card p-4 bg-red-500/10 border border-red-500/30 space-y-3">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-extrabold text-red-300">Action required — max auto-delays reached</p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  Your league has been auto-delayed 3 times and still has {league._count.members}/{league.maxTeams} teams.
-                  Choose how to proceed:
-                </p>
+        {isCommissioner && league.isPublic && league.status === "upcoming" && league.delayCount >= 3 && !isFull && !dismissedDecisionBanner && (
+          <div className="rounded-card p-4 bg-amber-500/10 border border-amber-500/30 space-y-3">
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-extrabold text-amber-300">Max auto-delays reached</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Your league has been auto-delayed 3 times and still has {league._count.members}/{league.maxTeams} teams. What would you like to do?
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleForceStart}
-                disabled={forceStarting}
-                className="btn-primary text-sm py-1.5 px-3 flex items-center gap-1.5"
-              >
-                {forceStarting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                Start with {league._count.members} teams
+              <button onClick={() => setDismissedDecisionBanner(true)} className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] shrink-0">
+                <X className="w-4 h-4" />
               </button>
-              <Link href={`/leagues/${leagueId}?delete=1`} className="btn-secondary text-sm py-1.5 px-3 text-red-400 hover:text-red-300">
-                Cancel League
-              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setDismissedDecisionBanner(true)} className="btn-secondary text-sm py-1.5 px-3">
+                Keep Waiting
+              </button>
+              {league.maxTeams > 6 && league._count.members <= 6 && (
+                <button onClick={() => handleResizeLeague(6)} disabled={resizingLeague} className="btn-secondary text-sm py-1.5 px-3">
+                  {resizingLeague ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Reduce to 6 teams"}
+                </button>
+              )}
+              {league.maxTeams > 4 && league._count.members <= 4 && (
+                <button onClick={() => handleResizeLeague(4)} disabled={resizingLeague} className="btn-secondary text-sm py-1.5 px-3">
+                  {resizingLeague ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Reduce to 4 teams"}
+                </button>
+              )}
+              <button onClick={handleDeleteLeague} disabled={deletingLeague} className="btn-secondary text-sm py-1.5 px-3 text-red-400 hover:text-red-300 border-red-500/30 hover:border-red-500/50">
+                {deletingLeague ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Cancel League"}
+              </button>
             </div>
           </div>
         )}

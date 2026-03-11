@@ -103,10 +103,24 @@ export async function GET(request: Request) {
         );
       }
     } else {
-      // Hit max delays — notify commissioner to decide
+      // Past max delays — bump draft another 24 hrs to prevent repeated cron triggers.
+      // Only send the "decision needed" email the first time (when delayCount === MAX_DELAYS).
+      const newDraftTime = new Date(
+        (league.draftScheduledAt as Date).getTime() + DELAY_HOURS * 60 * 60 * 1000
+      );
+      await prisma.league.update({
+        where: { id: league.id },
+        data: {
+          draftScheduledAt: newDraftTime,
+          delayCount: league.delayCount + 1,
+          draftReminderSentAt: null,
+          draftFinalReminderSentAt: null,
+        },
+      });
       pendingDecision.push(league.id);
 
-      if (process.env.RESEND_API_KEY) {
+      // Only email on the first breach of MAX_DELAYS (delayCount was exactly MAX_DELAYS)
+      if (league.delayCount === MAX_DELAYS && process.env.RESEND_API_KEY) {
         const { sendDraftDecisionNeededEmail } = await import("@/lib/email");
         await sendDraftDecisionNeededEmail({
           to: league.commissioner.email,

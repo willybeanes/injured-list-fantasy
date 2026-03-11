@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
-import { Users, Clock, Swords, Globe, Loader2, RefreshCw } from "lucide-react";
+import { Users, Clock, Swords, Globe, Loader2, RefreshCw, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CreateLeagueModal, JoinLeagueModal } from "@/components/league/LeagueModals";
 
 interface LobbyLeague {
   id: string;
@@ -27,11 +29,24 @@ function formatDraftTime(iso: string) {
 }
 
 export default function LobbyPage() {
+  const router = useRouter();
   const [leagues, setLeagues] = useState<LobbyLeague[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) setShowPlusMenu(false);
+    }
+    if (showPlusMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPlusMenu]);
 
   const fetchLeagues = async () => {
     setLoading(true);
@@ -74,14 +89,38 @@ export default function LobbyPage() {
         title="Public Lobby"
         subtitle="Join an open league"
         actions={
-          <button
-            onClick={fetchLeagues}
-            disabled={loading}
-            className="btn-secondary text-sm py-1.5 px-3"
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+          <div className="flex gap-2">
+            <button onClick={fetchLeagues} disabled={loading} className="btn-secondary text-sm py-1.5 px-3">
+              <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            {/* Desktop */}
+            <button onClick={() => setShowJoin(true)} className="btn-secondary text-sm py-1.5 px-3 hidden sm:inline-flex">
+              Join League
+            </button>
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-sm py-1.5 px-3 hidden sm:inline-flex">
+              <Plus className="w-3.5 h-3.5" />
+              Create League
+            </button>
+            {/* Mobile: "+" dropdown */}
+            <div className="relative sm:hidden" ref={plusMenuRef}>
+              <button onClick={() => setShowPlusMenu((v) => !v)} className="btn-primary text-sm py-1.5 px-3">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              {showPlusMenu && (
+                <div className="absolute right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-[9px] shadow-lg overflow-hidden z-50 w-44">
+                  <button onClick={() => { setShowCreate(true); setShowPlusMenu(false); }} className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors">
+                    <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+                    Create League
+                  </button>
+                  <button onClick={() => { setShowJoin(true); setShowPlusMenu(false); }} className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors">
+                    <Users className="w-4 h-4 text-[var(--text-muted)]" />
+                    Join League
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         }
       />
 
@@ -196,6 +235,19 @@ export default function LobbyPage() {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <CreateLeagueModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(league) => { setShowCreate(false); router.push(`/leagues/${league.id}`); }}
+        />
+      )}
+      {showJoin && (
+        <JoinLeagueModal
+          onClose={() => setShowJoin(false)}
+          onJoined={(league) => { setShowJoin(false); router.push(`/leagues/${league.id}`); }}
+        />
+      )}
     </div>
   );
 }
