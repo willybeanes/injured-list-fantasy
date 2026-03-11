@@ -10,6 +10,7 @@ import {
   User,
   Swords,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -99,6 +100,13 @@ export function Sidebar({ username, email }: SidebarProps) {
           <LogOut className="w-4 h-4 shrink-0" />
           Sign Out
         </button>
+        <a
+          href="mailto:support@injuredlistfantasy.com"
+          className="nav-item text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+        >
+          <Mail className="w-4 h-4 shrink-0" />
+          Contact Support
+        </a>
       </div>
     </aside>
   );

@@ -45,7 +45,21 @@ export default async function AppLayout({
               user's leagues is actively in the drafting phase */}
           <DraftingBanner />
           {/* pb-16 on mobile leaves room for the fixed BottomNav */}
-          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+            {children}
+            {/* Support footer — visible on mobile (sidebar shows it on desktop) */}
+            <div className="md:hidden px-6 py-4 border-t border-[var(--border)] mt-4">
+              <a
+                href="mailto:support@injuredlistfantasy.com"
+                className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+                Contact Support
+              </a>
+            </div>
+          </main>
         </div>
         <BottomNav />
       </div>

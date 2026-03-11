@@ -49,8 +49,21 @@ export default function LeaguesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const didAutoOpen = useRef(false);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the "+" dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
+        setShowPlusMenu(false);
+      }
+    }
+    if (showPlusMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPlusMenu]);
 
   // Auto-open modals from URL params (e.g. from Dashboard buttons)
   useEffect(() => {
@@ -93,6 +106,7 @@ export default function LeaguesPage() {
         subtitle={`${leagues.length} league${leagues.length === 1 ? "" : "s"}`}
         actions={
           <div className="flex gap-2">
+            {/* Desktop: separate buttons */}
             <button
               onClick={() => setShowJoin(true)}
               className="btn-secondary text-sm py-1.5 px-3 !hidden sm:!inline-flex"
@@ -101,11 +115,38 @@ export default function LeaguesPage() {
             </button>
             <button
               onClick={() => setShowCreate(true)}
-              className="btn-primary text-sm py-1.5 px-3"
+              className="btn-primary text-sm py-1.5 px-3 !hidden sm:!inline-flex"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Create League</span>
+              Create League
             </button>
+            {/* Mobile: "+" with dropdown for Create + Join */}
+            <div className="relative sm:hidden" ref={plusMenuRef}>
+              <button
+                onClick={() => setShowPlusMenu((v) => !v)}
+                className="btn-primary text-sm py-1.5 px-3"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              {showPlusMenu && (
+                <div className="absolute right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-[9px] shadow-lg overflow-hidden z-50 w-44">
+                  <button
+                    onClick={() => { setShowCreate(true); setShowPlusMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+                    Create League
+                  </button>
+                  <button
+                    onClick={() => { setShowJoin(true); setShowPlusMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-[var(--text-muted)]" />
+                    Join League
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         }
       />

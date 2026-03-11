@@ -15,6 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { PlusMenu } from "@/components/layout/PlusMenu";
 import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { format, subWeeks, startOfWeek } from "date-fns";
@@ -279,13 +280,16 @@ export default async function DashboardPage({
         subtitle={selectedRosterName}
         actions={
           <div className="flex gap-2">
+            {/* Desktop: separate buttons */}
             <Link href="/leagues?join=1" className="btn-secondary text-sm py-1.5 px-3 hidden sm:inline-flex">
               Join League
             </Link>
-            <Link href="/leagues?create=1" className="btn-primary text-sm py-1.5 px-3">
+            <Link href="/leagues?create=1" className="btn-primary text-sm py-1.5 px-3 hidden sm:inline-flex">
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Create League</span>
+              Create League
             </Link>
+            {/* Mobile: "+" dropdown */}
+            <PlusMenu createHref="/leagues?create=1" joinHref="/leagues?join=1" />
           </div>
         }
       />
