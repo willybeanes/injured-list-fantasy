@@ -78,30 +78,30 @@ export async function GET(request: Request) {
         },
       });
 
-      // Only log IL days and track newly injured for players actually on IL,
-      // and only once the season has started (on or after Opening Day)
+      // Log IL days for all IL players (powers Recent IL Placements list).
+      // Only increment seasonIlDays once the season has started (Opening Day).
       if (ilStatus !== "active") {
         ilPlayerIds.push(playerId);
 
-        if (seasonStarted) {
-          // Log today's IL day (idempotent — unique constraint on [playerId, logDate])
-          const existing = await prisma.ilDayLog.findUnique({
-            where: { mlbPlayerId_logDate: { mlbPlayerId: playerId, logDate: today } },
+        // Always log today's entry (idempotent — unique constraint on [playerId, logDate])
+        const existing = await prisma.ilDayLog.findUnique({
+          where: { mlbPlayerId_logDate: { mlbPlayerId: playerId, logDate: today } },
+        });
+
+        if (!existing) {
+          await prisma.ilDayLog.create({
+            data: { mlbPlayerId: playerId, logDate: today, ilStatus },
           });
 
-          if (!existing) {
-            await prisma.ilDayLog.create({
-              data: { mlbPlayerId: playerId, logDate: today, ilStatus },
-            });
-
-            // Increment season total
+          if (seasonStarted) {
+            // Increment season total only after Opening Day
             await prisma.mlbPlayer.update({
               where: { id: playerId },
               data: { seasonIlDays: { increment: 1 } },
             });
-
-            newlyInjured.push({ playerId, fullName: entry.player.fullName, status: ilStatus });
           }
+
+          newlyInjured.push({ playerId, fullName: entry.player.fullName, status: ilStatus });
         }
       }
     }
