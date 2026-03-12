@@ -10,7 +10,8 @@ const DELAY_HOURS = 24;
  * Called every 5 minutes via GitHub Actions.
  *
  * For each upcoming league whose draftScheduledAt <= now + 5min:
- *   - Private league OR public + full → open draft (upcoming → drafting)
+ *   - Full league (public or private) → open draft (upcoming → drafting)
+ *   - Private + not full → clear draftScheduledAt (commissioner must reschedule)
  *   - Public + not full + delayCount < MAX_DELAYS → delay 24hr, notify members
  *   - Public + not full + delayCount >= MAX_DELAYS → notify commissioner to decide
  */
@@ -43,19 +44,34 @@ export async function GET(request: Request) {
   }
 
   const opened: string[] = [];
+  const cleared: string[] = [];
   const delayed: string[] = [];
   const pendingDecision: string[] = [];
 
   for (const league of leaguesToProcess) {
     const isFull = league._count.members >= league.maxTeams;
 
-    // Private leagues or full public leagues → open draft immediately
-    if (!league.isPublic || isFull) {
+    // Any full league → open draft immediately
+    if (isFull) {
       await prisma.league.update({
         where: { id: league.id },
         data: { status: "drafting" },
       });
       opened.push(league.id);
+      continue;
+    }
+
+    // Private + not full → clear the scheduled time, commissioner must reschedule
+    if (!league.isPublic) {
+      await prisma.league.update({
+        where: { id: league.id },
+        data: {
+          draftScheduledAt: null,
+          draftReminderSentAt: null,
+          draftFinalReminderSentAt: null,
+        },
+      });
+      cleared.push(league.id);
       continue;
     }
 
@@ -136,8 +152,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     opened: opened.length,
+    cleared: cleared.length,
     delayed: delayed.length,
     pendingDecision: pendingDecision.length,
-    leagues: { opened, delayed, pendingDecision },
+    leagues: { opened, cleared, delayed, pendingDecision },
   });
 }
