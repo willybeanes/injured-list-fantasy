@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Topbar } from "@/components/layout/Topbar";
-import { Activity, TrendingUp, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Activity, TrendingUp, ChevronLeft, ChevronRight, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { formatIlStatus, ilStatusBadgeClass, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { usePlayerCard } from "@/components/player/PlayerCardContext";
@@ -125,6 +125,8 @@ export default function InjuriesPage() {
   const [ilFilter, setIlFilter] = useState<IlStatusFilter>("all");
   const [ilPage, setIlPage] = useState(1);
   const [ilPageSize, setIlPageSize] = useState<PageSize>(20);
+  const [ilSortCol, setIlSortCol] = useState<"fullName" | "currentIlStatus" | "ilPlacedDate" | "seasonIlDays">("ilPlacedDate");
+  const [ilSortDir, setIlSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     fetch("/api/injuries")
@@ -138,14 +140,33 @@ export default function InjuriesPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Filtered "currently on IL" list
+  // Filtered + sorted "currently on IL" list
   const filteredOnIl = useMemo(() => {
-    if (ilFilter === "all") return onIl;
-    return onIl.filter((p) => p.currentIlStatus === ilFilter);
-  }, [onIl, ilFilter]);
+    const filtered = ilFilter === "all" ? onIl : onIl.filter((p) => p.currentIlStatus === ilFilter);
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (ilSortCol === "fullName") {
+        cmp = a.fullName.localeCompare(b.fullName);
+      } else if (ilSortCol === "currentIlStatus") {
+        cmp = a.currentIlStatus.localeCompare(b.currentIlStatus);
+      } else if (ilSortCol === "ilPlacedDate") {
+        const aT = a.ilPlacedDate ? new Date(a.ilPlacedDate).getTime() : 0;
+        const bT = b.ilPlacedDate ? new Date(b.ilPlacedDate).getTime() : 0;
+        cmp = aT - bT;
+      } else {
+        cmp = a.seasonIlDays - b.seasonIlDays;
+      }
+      return ilSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [onIl, ilFilter, ilSortCol, ilSortDir]);
 
-  // Reset to page 1 when filter changes
-  useEffect(() => { setIlPage(1); }, [ilFilter]);
+  // Reset to page 1 when filter or sort changes
+  useEffect(() => { setIlPage(1); }, [ilFilter, ilSortCol, ilSortDir]);
+
+  const handleIlSort = (col: typeof ilSortCol) => {
+    if (ilSortCol === col) setIlSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setIlSortCol(col); setIlSortDir(col === "fullName" ? "asc" : "desc"); }
+  };
 
   // Paginated slices
   const recentTotal = recentLog.length;
@@ -340,10 +361,30 @@ export default function InjuriesPage() {
                 <thead>
                   <tr>
                     <th className="hidden sm:table-cell w-8">#</th>
-                    <th>Player</th>
-                    <th>Status</th>
-                    <th className="hidden sm:table-cell">Date Placed</th>
-                    <th className="text-right">2026 IL Days</th>
+                    <th>
+                      <button onClick={() => handleIlSort("fullName")} className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
+                        Player
+                        {ilSortCol === "fullName" ? (ilSortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
+                      </button>
+                    </th>
+                    <th>
+                      <button onClick={() => handleIlSort("currentIlStatus")} className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
+                        Status
+                        {ilSortCol === "currentIlStatus" ? (ilSortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
+                      </button>
+                    </th>
+                    <th className="hidden sm:table-cell">
+                      <button onClick={() => handleIlSort("ilPlacedDate")} className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
+                        Date Placed
+                        {ilSortCol === "ilPlacedDate" ? (ilSortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
+                      </button>
+                    </th>
+                    <th className="text-right">
+                      <button onClick={() => handleIlSort("seasonIlDays")} className="flex items-center gap-1 ml-auto hover:text-[var(--text-primary)] transition-colors">
+                        2026 IL Days
+                        {ilSortCol === "seasonIlDays" ? (ilSortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
+                      </button>
+                    </th>
                     <th className="hidden sm:table-cell text-right">On Your Roster</th>
                   </tr>
                 </thead>
