@@ -342,7 +342,7 @@ export default function LeagueDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Status", value: <span className={`badge ${statusColors[league.status]}`}>{league.status}</span> },
-            { label: "Visibility", value: league.isPublic ? <span className="flex items-center gap-1 text-blue-400"><Globe className="w-3 h-3" />Public</span> : <span className="flex items-center gap-1 text-[var(--text-muted)]"><Lock className="w-3 h-3" />Private</span> },
+            { label: "Visibility", value: league.isPublic ? <span className="flex items-center justify-center gap-1 text-blue-400"><Globe className="w-3 h-3" />Public</span> : <span className="flex items-center justify-center gap-1 text-[var(--text-muted)]"><Lock className="w-3 h-3" />Private</span> },
             { label: "Draft Format", value: league.draftFormat === "snake" ? "Snake" : "Auction" },
             { label: "Roster Size", value: `${league.rosterSize} players` },
           ].map((item) => (
