@@ -81,6 +81,17 @@ export default function LeaguesPage() {
       <Topbar
         title="My Leagues"
         subtitle={`${leagues.length} league${leagues.length === 1 ? "" : "s"}`}
+        actions={
+          <>
+            <button onClick={() => setShowJoin(true)} className="btn-secondary text-sm py-1.5 px-3">
+              Join League
+            </button>
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-sm py-1.5 px-3">
+              <Plus className="w-3.5 h-3.5" />
+              Create League
+            </button>
+          </>
+        }
       />
 
       <div className="p-4 sm:p-6 max-w-4xl space-y-4">
