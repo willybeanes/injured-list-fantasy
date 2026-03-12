@@ -246,22 +246,9 @@ try {
     else skipped++;
   }
 
-  // Also update seasonIlDays for 2025 (season is complete)
-  const txs2025 = await fetchTransactions(SEASONS[4].startDate, SEASONS[4].endDate);
-  const days2025 = parseSeasonIlDays(txs2025, SEASONS[4].seasonEnd);
-  await db.query(`UPDATE "MlbPlayer" SET "seasonIlDays" = 0`);
-  let s25 = 0;
-  for (const [playerId, days] of days2025.entries()) {
-    const r = await db.query(
-      `UPDATE "MlbPlayer" SET "seasonIlDays" = $1 WHERE id = $2`,
-      [days, playerId]
-    );
-    if (r.rowCount && r.rowCount > 0) s25++;
-  }
-
   console.log(`Career stats updated:  ${updated} players`);
-  console.log(`Not in roster DB:      ${skipped} players (retired/released)`);
-  console.log(`2025 seasonIlDays:     ${s25} players updated\n`);
+  console.log(`Not in roster DB:      ${skipped} players (retired/released)\n`);
+  // Note: seasonIlDays is managed by the sync-il cron for the current (2026) season only.
 
   // ─── Sanity check ─────────────────────────────────────────────────────────
   const topPlayers = await db.query(`
