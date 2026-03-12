@@ -429,3 +429,56 @@ export async function sendDraftDecisionNeededEmail({
     console.error("Failed to send draft decision email:", err);
   }
 }
+
+export async function sendLeagueFullEmail({
+  to,
+  username,
+  leagueName,
+  teamCount,
+  isCommissioner,
+  leagueUrl,
+}: {
+  to: string;
+  username: string;
+  leagueName: string;
+  teamCount: number;
+  isCommissioner: boolean;
+  leagueUrl: string;
+}) {
+  const commissionerNote = isCommissioner
+    ? `<p style="margin:8px 0 0;color:#22c55e;font-size:13px;font-weight:600;">As commissioner, you can now schedule or start the draft.</p>`
+    : `<p style="margin:8px 0 0;color:#8892a4;font-size:13px;">Keep an eye out for a draft time announcement from your commissioner.</p>`;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `🎉 ${leagueName} is full — draft time!`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">⚔️</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your league is full!</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username},</p>
+          <div style="background:#191d26;border:1px solid #272e3d;border-radius:12px;padding:16px;margin-bottom:16px;">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#edf0f5;">${leagueName}</p>
+            <p style="margin:4px 0 0;color:#22c55e;font-weight:600;">${teamCount}/${teamCount} teams — League is full</p>
+            ${commissionerNote}
+          </div>
+          <a href="${leagueUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
+            Go to League →
+          </a>
+          <p style="color:#505c6e;font-size:12px;margin-top:20px;">
+            You're receiving this because you're a member of ${leagueName} on Injured List Fantasy.
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send league full email:", err);
+  }
+}

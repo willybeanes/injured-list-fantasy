@@ -83,6 +83,29 @@ export async function POST(request: Request) {
     data: { leagueId: league.id, userId: user.id, teamName: teamName?.trim() || null },
   });
 
+  // If this join filled the league, email all members
+  const newMemberCount = league._count.members + 1;
+  if (newMemberCount >= league.maxTeams && process.env.RESEND_API_KEY) {
+    const allMembers = await prisma.leagueMember.findMany({
+      where: { leagueId: league.id },
+      include: { user: { select: { email: true, username: true, id: true } } },
+    });
+    const leagueUrl = `${process.env.NEXT_PUBLIC_APP_URL}/leagues/${league.id}`;
+    const { sendLeagueFullEmail } = await import("@/lib/email");
+    await Promise.allSettled(
+      allMembers.map((m) =>
+        sendLeagueFullEmail({
+          to: m.user.email,
+          username: m.user.username,
+          leagueName: league.name,
+          teamCount: league.maxTeams,
+          isCommissioner: m.user.id === league.commissionerId,
+          leagueUrl,
+        })
+      )
+    );
+  }
+
   return NextResponse.json({
     league: { ...league, isCommissioner: false },
   });
