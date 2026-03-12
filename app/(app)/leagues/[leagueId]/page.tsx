@@ -159,11 +159,14 @@ export default function LeagueDetailPage() {
 
   const startDraft = async () => {
     setStartingDraft(true);
-    await fetch(`/api/leagues/${leagueId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "drafting" }),
-    });
+    const res = await fetch(`/api/leagues/${leagueId}/start-draft`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json();
+      alert(d.error ?? "Failed to start draft");
+      setStartingDraft(false);
+      return;
+    }
+    // Redirect to draft room — the 5-minute countdown will be showing
     router.push(`/draft/${leagueId}`);
   };
 

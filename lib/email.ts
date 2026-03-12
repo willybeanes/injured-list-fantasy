@@ -287,6 +287,111 @@ export async function sendDraftFinalReminder({
   }
 }
 
+// Sent to all members when the commissioner manually triggers "Start Draft"
+// (sets a 5-minute countdown rather than opening the room immediately)
+export async function sendDraftStartingEmail({
+  to,
+  username,
+  leagueName,
+  leagueId,
+}: {
+  to: string;
+  username: string;
+  leagueName: string;
+  leagueId: string;
+}) {
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `🚨 Your draft is starting in 5 minutes — ${leagueName}`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">🚨</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft Starting in 5 Minutes!</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username}, your commissioner has started the draft countdown — get in the room!</p>
+          <div style="background:#191d26;border:1px solid #dc2f1f;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">League</p>
+            <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${leagueName}</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">⏱ Countdown is live</p>
+          </div>
+          <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
+            Enter Draft Room →
+          </a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft starting email:", err);
+  }
+}
+
+// Sent to all members when the commissioner sets or changes the draft time
+export async function sendDraftScheduledEmail({
+  to,
+  username,
+  leagueName,
+  leagueId,
+  draftAt,
+  isChange,
+}: {
+  to: string;
+  username: string;
+  leagueName: string;
+  leagueId: string;
+  draftAt: Date;
+  isChange: boolean;
+}) {
+  const dateStr = draftAt.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  const timeStr = draftAt.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  const verb = isChange ? "rescheduled" : "scheduled";
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `📅 Draft ${verb} — ${leagueName}`,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:white;font-size:18px;">📅</span>
+            </div>
+            <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
+          </div>
+          <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft ${isChange ? "Rescheduled" : "Date Set"}!</h1>
+          <p style="color:#8892a4;margin:0 0 16px;">Hey ${username}, your commissioner has ${verb} the draft for <strong style="color:#edf0f5;">${leagueName}</strong>.</p>
+          <div style="background:#191d26;border:1px solid #272e3d;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">Draft Time</p>
+            <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${dateStr}</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:600;margin:6px 0 0;">${timeStr}</p>
+          </div>
+          <a href="${APP_URL}/leagues/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
+            View League →
+          </a>
+          <p style="color:#505c6e;font-size:12px;margin-top:20px;">
+            The draft room opens 5 minutes before the scheduled time.
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send draft scheduled email:", err);
+  }
+}
+
 export async function sendWeeklySummary({
   to,
   username,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { sendDraftScheduledEmail } from "@/lib/email";
 
 // GET /api/leagues/[leagueId]
 export async function GET(
@@ -97,12 +98,15 @@ export async function PATCH(
   const { status, maxTeams, draftScheduledAt } = body;
 
   // Validate status transitions.
+  // NOTE: upcoming → drafting is intentionally NOT here — that transition
+  // only happens via POST /api/leagues/[id]/start-draft (commissioner manual
+  // start with 5-min countdown) or automatically via the open-drafts cron.
   // NOTE: drafting → active is intentionally NOT here — that transition
   // only happens automatically via /api/draft/[id]/pick or /auto-pick
   // once all picks are complete. This prevents commissioners from
   // short-circuiting the draft via the API.
   const validTransitions: Record<string, string[]> = {
-    upcoming: ["drafting"],
+    upcoming: [],
     drafting: [],
     active: ["completed"],
     completed: [],
@@ -142,11 +146,27 @@ export async function PATCH(
     }
   }
 
+  // Detect draft time changes before writing, so we can send the right email
+  const draftTimeIsBeingSet =
+    draftScheduledAt !== undefined &&
+    draftScheduledAt !== null &&
+    !league.draftScheduledAt;
+  const draftTimeIsBeingChanged =
+    draftScheduledAt !== undefined &&
+    draftScheduledAt !== null &&
+    !!league.draftScheduledAt &&
+    new Date(draftScheduledAt).getTime() !== new Date(league.draftScheduledAt).getTime();
+
   const updateData: Record<string, unknown> = {};
   if (status) updateData.status = status;
   if (maxTeams !== undefined) updateData.maxTeams = maxTeams;
   if (draftScheduledAt !== undefined) {
     updateData.draftScheduledAt = draftScheduledAt ? new Date(draftScheduledAt) : null;
+    // Reset reminder flags whenever the time changes so reminders fire correctly
+    if (draftScheduledAt !== null) {
+      updateData.draftReminderSentAt = null;
+      updateData.draftFinalReminderSentAt = null;
+    }
   }
 
   const updated = await prisma.league.update({
@@ -154,6 +174,26 @@ export async function PATCH(
     data: updateData,
     include: { _count: { select: { members: true } } },
   });
+
+  // Send "draft scheduled/rescheduled" emails when the commissioner sets or changes the time
+  if (draftTimeIsBeingSet || draftTimeIsBeingChanged) {
+    const members = await prisma.leagueMember.findMany({
+      where: { leagueId },
+      include: { user: { select: { email: true, username: true } } },
+    });
+    void Promise.all(
+      members.map((m) =>
+        sendDraftScheduledEmail({
+          to: m.user.email!,
+          username: m.user.username ?? "Manager",
+          leagueName: league.name,
+          leagueId,
+          draftAt: new Date(draftScheduledAt),
+          isChange: draftTimeIsBeingChanged,
+        })
+      )
+    );
+  }
 
   return NextResponse.json({ league: updated });
 }
