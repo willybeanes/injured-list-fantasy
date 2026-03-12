@@ -31,6 +31,10 @@ export async function GET(request: Request) {
   const isMondayReset = today.getDay() === 1; // Monday
   const seasonYear = currentSeasonYear();
 
+  // IL days only accumulate once the season starts (Opening Day)
+  const openingDay = new Date(`${seasonYear}-03-25`);
+  const seasonStarted = today >= openingDay;
+
   console.log(`[sync-il] Starting sync for ${today.toISOString()} (Monday: ${isMondayReset})`);
 
   try {
@@ -74,27 +78,30 @@ export async function GET(request: Request) {
         },
       });
 
-      // Only log IL days and track newly injured for players actually on IL
+      // Only log IL days and track newly injured for players actually on IL,
+      // and only once the season has started (on or after Opening Day)
       if (ilStatus !== "active") {
         ilPlayerIds.push(playerId);
 
-        // Log today's IL day (idempotent — unique constraint on [playerId, logDate])
-        const existing = await prisma.ilDayLog.findUnique({
-          where: { mlbPlayerId_logDate: { mlbPlayerId: playerId, logDate: today } },
-        });
-
-        if (!existing) {
-          await prisma.ilDayLog.create({
-            data: { mlbPlayerId: playerId, logDate: today, ilStatus },
+        if (seasonStarted) {
+          // Log today's IL day (idempotent — unique constraint on [playerId, logDate])
+          const existing = await prisma.ilDayLog.findUnique({
+            where: { mlbPlayerId_logDate: { mlbPlayerId: playerId, logDate: today } },
           });
 
-          // Increment season total
-          await prisma.mlbPlayer.update({
-            where: { id: playerId },
-            data: { seasonIlDays: { increment: 1 } },
-          });
+          if (!existing) {
+            await prisma.ilDayLog.create({
+              data: { mlbPlayerId: playerId, logDate: today, ilStatus },
+            });
 
-          newlyInjured.push({ playerId, fullName: entry.player.fullName, status: ilStatus });
+            // Increment season total
+            await prisma.mlbPlayer.update({
+              where: { id: playerId },
+              data: { seasonIlDays: { increment: 1 } },
+            });
+
+            newlyInjured.push({ playerId, fullName: entry.player.fullName, status: ilStatus });
+          }
         }
       }
     }
