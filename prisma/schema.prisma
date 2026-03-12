@@ -121,12 +121,13 @@ model MlbPlayer {
   teamName        String?
   teamAbbr        String?
   position        String?
-  currentIlStatus IlStatus @default(active)
-  seasonIlDays    Int      @default(0)
-  careerIlDays    Int      @default(0)
-  careerSeasons   Int      @default(0)
+  currentIlStatus IlStatus  @default(active)
+  seasonIlDays    Int       @default(0)
+  careerIlDays    Int       @default(0)
+  careerSeasons   Int       @default(0)
   age             Int?
   birthDate       String?
+  ilPlacedDate    DateTime? // Actual MLB transaction date for the current IL stint
   lastSyncedAt    DateTime?
 
   rosterPlayers RosterPlayer[]

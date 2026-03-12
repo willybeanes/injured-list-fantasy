@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { fetchAllRosterPlayers } from "@/lib/mlb-api";
+import { fetchAllRosterPlayers, fetchRecentIlPlacements } from "@/lib/mlb-api";
 import { sendInjuryAlert, sendWeeklySummary } from "@/lib/email";
 import { currentSeasonYear } from "@/lib/utils";
 
@@ -38,9 +38,12 @@ export async function GET(request: Request) {
   console.log(`[sync-il] Starting sync for ${today.toISOString()} (Monday: ${isMondayReset})`);
 
   try {
-    // ─── Step 1: Fetch all 40-man roster players from MLB API ───────────────
-    const allPlayers = await fetchAllRosterPlayers();
-    console.log(`[sync-il] Fetched ${allPlayers.length} players from MLB API (all 40-man rosters)`);
+    // ─── Step 1: Fetch all 40-man roster players + recent IL transactions ───
+    const [allPlayers, recentPlacements] = await Promise.all([
+      fetchAllRosterPlayers(),
+      fetchRecentIlPlacements(30), // 30-day window to catch all current stints
+    ]);
+    console.log(`[sync-il] Fetched ${allPlayers.length} players; ${recentPlacements.size} recent IL placements from transactions`);
 
     // Track which player IDs are on IL today
     const ilPlayerIds: number[] = [];
@@ -52,6 +55,7 @@ export async function GET(request: Request) {
       const ilStatus = entry.ilStatus;
 
       // Upsert mlb_players — ALL players, including healthy ones
+      const placedDate = recentPlacements.get(playerId) ?? null;
       await prisma.mlbPlayer.upsert({
         where: { id: playerId },
         update: {
@@ -62,6 +66,10 @@ export async function GET(request: Request) {
           currentIlStatus: ilStatus,
           age: entry.age ?? null,
           birthDate: entry.birthDate ?? null,
+          // Set ilPlacedDate from transaction data; clear it when player is active
+          ...(ilStatus === "active"
+            ? { ilPlacedDate: null }
+            : placedDate ? { ilPlacedDate: placedDate } : {}),
           lastSyncedAt: new Date(),
         },
         create: {
@@ -73,6 +81,7 @@ export async function GET(request: Request) {
           currentIlStatus: ilStatus,
           age: entry.age ?? null,
           birthDate: entry.birthDate ?? null,
+          ilPlacedDate: ilStatus !== "active" ? (placedDate ?? null) : null,
           seasonIlDays: 0,
           lastSyncedAt: new Date(),
         },

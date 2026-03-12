@@ -172,6 +172,51 @@ export async function searchPlayers(query: string): Promise<MlbPlayer[]> {
   }
 }
 
+/**
+ * Fetch recent IL placement transactions from the MLB API and return a map of
+ * playerId → most recent placement date. Only captures placements (not transfers
+ * or activations). Used to store the actual MLB transaction date on MlbPlayer.
+ */
+export async function fetchRecentIlPlacements(days: number): Promise<Map<number, Date>> {
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  const end = new Date();
+  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  const url = `${BASE_URL}/transactions?sportId=1&startDate=${fmt(start)}&endDate=${fmt(end)}`;
+
+  try {
+    const res = await fetch(url, { next: { revalidate: ONE_HOUR } });
+    if (!res.ok) return new Map();
+    const data = await res.json();
+    const txs: Array<{
+      typeCode: string;
+      description: string;
+      effectiveDate?: string;
+      date?: string;
+      person?: { id: number };
+    }> = data.transactions ?? [];
+
+    const map = new Map<number, Date>();
+    for (const tx of txs) {
+      if (tx.typeCode !== "SC") continue;
+      const desc = tx.description?.toLowerCase() ?? "";
+      if (!desc.includes("placed") || !desc.includes("injured list")) continue;
+      if (desc.includes("transferred")) continue;
+      const playerId = tx.person?.id;
+      if (!playerId) continue;
+      const dateStr = tx.effectiveDate ?? tx.date;
+      if (!dateStr) continue;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) continue;
+      // Keep the most recent placement per player within the window
+      const existing = map.get(playerId);
+      if (!existing || d > existing) map.set(playerId, d);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 /** Fetch all MLB teams */
 export async function fetchAllTeams() {
   try {

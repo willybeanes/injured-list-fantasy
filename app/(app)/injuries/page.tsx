@@ -21,17 +21,13 @@ const PAGE_SIZE_OPTIONS = [20, 100] as const;
 type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
 interface RecentLogEntry {
-  id: string;
-  mlbPlayerId: number;
-  logDate: string;
-  ilStatus: string;
-  mlbPlayer: {
-    fullName: string;
-    teamAbbr: string | null;
-    position: string | null;
-    currentIlStatus: string;
-    seasonIlDays: number;
-  };
+  id: number;
+  fullName: string;
+  teamAbbr: string | null;
+  position: string | null;
+  currentIlStatus: string;
+  seasonIlDays: number;
+  ilPlacedDate: string;
 }
 
 interface OnIlPlayer {
@@ -41,7 +37,7 @@ interface OnIlPlayer {
   position: string | null;
   currentIlStatus: string;
   seasonIlDays: number;
-  ilStartDate: string | null;
+  ilPlacedDate: string | null;
 }
 
 // ─── Pagination controls ─────────────────────────────────────────────────────
@@ -218,7 +214,7 @@ export default function InjuriesPage() {
                   <tr>
                     <th>Player</th>
                     <th>Status</th>
-                    <th className="hidden sm:table-cell">First Logged</th>
+                    <th className="hidden sm:table-cell">Placed On IL</th>
                     <th className="text-right">2026 IL Days</th>
                     <th className="hidden sm:table-cell text-right">On Your Roster</th>
                   </tr>
@@ -229,31 +225,31 @@ export default function InjuriesPage() {
                       <td>
                         <div>
                           <button
-                            onClick={() => openPlayerCard(log.mlbPlayerId)}
+                            onClick={() => openPlayerCard(log.id)}
                             className="text-sm font-semibold text-[var(--text-primary)] hover:text-brand-red transition-colors text-left"
                           >
-                            {log.mlbPlayer.fullName}
+                            {log.fullName}
                           </button>
                           <p className="text-xs text-[var(--text-muted)]">
-                            {log.mlbPlayer.position} · {log.mlbPlayer.teamAbbr}
+                            {log.position} · {log.teamAbbr}
                           </p>
                         </div>
                       </td>
                       <td>
-                        <span className={ilStatusBadgeClass(log.ilStatus)}>
-                          {formatIlStatus(log.ilStatus)}
+                        <span className={ilStatusBadgeClass(log.currentIlStatus)}>
+                          {formatIlStatus(log.currentIlStatus)}
                         </span>
                       </td>
                       <td className="hidden sm:table-cell text-sm text-[var(--text-secondary)]">
-                        {format(new Date(log.logDate), "MMM d, yyyy")}
+                        {format(new Date(log.ilPlacedDate), "MMM d, yyyy")}
                       </td>
                       <td className="text-right">
                         <span className="text-sm font-semibold text-brand-red">
-                          {log.mlbPlayer.seasonIlDays}d
+                          {log.seasonIlDays}d
                         </span>
                       </td>
                       <td className="hidden sm:table-cell text-right">
-                        {myPlayerIds.has(log.mlbPlayerId) ? (
+                        {myPlayerIds.has(log.id) ? (
                           <span className="badge badge-green">Yes</span>
                         ) : (
                           <span className="text-xs text-[var(--text-muted)]">—</span>
@@ -376,8 +372,8 @@ export default function InjuriesPage() {
                         </span>
                       </td>
                       <td className="hidden sm:table-cell text-sm text-[var(--text-secondary)]">
-                        {player.ilStartDate
-                          ? format(new Date(player.ilStartDate), "MMM d")
+                        {player.ilPlacedDate
+                          ? format(new Date(player.ilPlacedDate), "MMM d")
                           : "—"}
                       </td>
                       <td className="text-right">
