@@ -343,8 +343,15 @@ export default function LeagueDetailPage() {
           {[
             { label: "Status", value: <span className={`badge ${statusColors[league.status]}`}>{league.status}</span> },
             { label: "Visibility", value: league.isPublic ? <span className="flex items-center justify-center gap-1 text-blue-400"><Globe className="w-3 h-3" />Public</span> : <span className="flex items-center justify-center gap-1 text-[var(--text-muted)]"><Lock className="w-3 h-3" />Private</span> },
-            { label: "Draft Format", value: league.draftFormat === "snake" ? "Snake" : "Auction" },
-            { label: "Roster Size", value: `${league.rosterSize} players` },
+            { label: "Draft Time", value: league.draftScheduledAt
+                ? (() => {
+                    const d = new Date(league.draftScheduledAt);
+                    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                      + " · "
+                      + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+                  })()
+                : <span className="text-[var(--text-muted)] font-normal text-xs">Not set</span> },
+            { label: "Teams", value: `${league._count.members}/${league.maxTeams}` },
           ].map((item) => (
             <div key={item.label} className="card-2 text-center">
               <p className="text-xs text-[var(--text-muted)] mb-1">{item.label}</p>
