@@ -343,7 +343,9 @@ export default function LeagueDetailPage() {
           {[
             { label: "Status", value: <span className={`badge ${statusColors[league.status]}`}>{league.status}</span> },
             { label: "Visibility", value: league.isPublic ? <span className="flex items-center justify-center gap-1 text-blue-400"><Globe className="w-3 h-3" />Public</span> : <span className="flex items-center justify-center gap-1 text-[var(--text-muted)]"><Lock className="w-3 h-3" />Private</span> },
-            { label: "Draft Time", value: league.draftScheduledAt
+            { label: "Draft Time", value: league.status === "active" || league.status === "completed"
+                ? <span className="text-green-400 font-normal text-xs">Draft completed</span>
+                : league.draftScheduledAt
                 ? (() => {
                     const d = new Date(league.draftScheduledAt);
                     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
