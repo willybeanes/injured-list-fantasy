@@ -202,8 +202,10 @@ export default function LeagueDetailPage() {
     completed: "badge-red",
   };
 
-  const isFull = league._count.members >= league.maxTeams;
-  const spotsLeft = league.maxTeams - league._count.members;
+  const memberCount = league._count.members;
+  const isFull = memberCount === league.maxTeams;
+  const isOverfull = memberCount > league.maxTeams;
+  const spotsLeft = league.maxTeams - memberCount; // negative when overfull
 
   return (
     <div>
@@ -265,7 +267,13 @@ export default function LeagueDetailPage() {
                 onClick={startDraft}
                 disabled={startingDraft || !isFull}
                 className="btn-primary text-sm py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={!isFull ? `Need ${spotsLeft} more team${spotsLeft === 1 ? "" : "s"} to start` : "Start the draft"}
+                title={
+                  isOverfull
+                    ? `League has ${memberCount} members but only ${league.maxTeams} spots — raise the team limit first`
+                    : !isFull
+                    ? `Need ${spotsLeft} more team${spotsLeft === 1 ? "" : "s"} to start`
+                    : "Start the draft"
+                }
               >
                 {startingDraft ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -288,8 +296,28 @@ export default function LeagueDetailPage() {
       />
 
       <div className="p-4 md:p-6 max-w-5xl space-y-5">
+        {/* "Overfull" banner — more members than maxTeams (race condition) */}
+        {league.status === "upcoming" && isOverfull && (
+          <div className="rounded-card p-4 bg-red-500/10 border border-red-500/30 space-y-1.5">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-extrabold text-red-300">League is over capacity</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  This league has {memberCount} managers but is set to {league.maxTeams} teams. The draft is blocked until the team count matches exactly.
+                </p>
+                {isCommissioner && (
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Go to <strong>Settings</strong> to raise the team limit, then invite another manager to fill the extra spot.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* "Waiting for teams" banner — shown when not yet full */}
-        {league.status === "upcoming" && !isFull && (
+        {league.status === "upcoming" && !isFull && !isOverfull && (
           <div className="rounded-card p-3 flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/20">
             <Users className="w-4 h-4 text-amber-500 shrink-0" />
             <p className="text-sm text-amber-400 font-semibold">
@@ -304,7 +332,7 @@ export default function LeagueDetailPage() {
         )}
 
         {/* Commissioner decision banner: public league hit max delays */}
-        {isCommissioner && league.isPublic && league.status === "upcoming" && league.delayCount >= 3 && !isFull && !dismissedDecisionBanner && (
+        {isCommissioner && league.isPublic && league.status === "upcoming" && league.delayCount >= 3 && !isFull && !isOverfull && !dismissedDecisionBanner && (
           <div className="rounded-card p-4 bg-amber-500/10 border border-amber-500/30 space-y-3">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">

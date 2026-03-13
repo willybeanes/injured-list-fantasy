@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   const pendingDecision: string[] = [];
 
   for (const league of leaguesToProcess) {
-    const isFull = league._count.members >= league.maxTeams;
+    const isFull = league._count.members === league.maxTeams;
 
     // Any full league → open draft immediately
     if (isFull) {

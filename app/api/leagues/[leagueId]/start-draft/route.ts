@@ -31,8 +31,15 @@ export async function POST(
   if (league.status !== "upcoming") {
     return NextResponse.json({ error: "Draft can only be started from upcoming status" }, { status: 400 });
   }
-  if (league._count.members < league.maxTeams) {
+  const memberCount = league._count.members;
+  if (memberCount < league.maxTeams) {
     return NextResponse.json({ error: "League is not full" }, { status: 400 });
+  }
+  if (memberCount > league.maxTeams) {
+    return NextResponse.json(
+      { error: `League has ${memberCount} members but only ${league.maxTeams} spots. Raise the team limit and fill the extra spots before starting.` },
+      { status: 400 }
+    );
   }
 
   // Set draft to start in 5 minutes
