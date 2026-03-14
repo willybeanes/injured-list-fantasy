@@ -179,19 +179,22 @@ export async function PATCH(
   if (draftTimeIsBeingSet || draftTimeIsBeingChanged) {
     const members = await prisma.leagueMember.findMany({
       where: { leagueId },
-      include: { user: { select: { email: true, username: true } } },
+      include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } },
     });
     void Promise.all(
-      members.map((m) =>
-        sendDraftScheduledEmail({
-          to: m.user.email!,
-          username: m.user.username ?? "Manager",
-          leagueName: league.name,
-          leagueId,
-          draftAt: new Date(draftScheduledAt),
-          isChange: draftTimeIsBeingChanged,
-        })
-      )
+      members
+        .filter((m) => !m.user.emailUnsubscribed)
+        .map((m) =>
+          sendDraftScheduledEmail({
+            to: m.user.email!,
+            userId: m.user.id,
+            username: m.user.username ?? "Manager",
+            leagueName: league.name,
+            leagueId,
+            draftAt: new Date(draftScheduledAt),
+            isChange: draftTimeIsBeingChanged,
+          })
+        )
     );
   }
 

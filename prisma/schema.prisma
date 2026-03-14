@@ -37,12 +37,13 @@ enum IlStatus {
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String   @unique
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  username           String   @unique
+  avatarUrl          String?
+  emailUnsubscribed  Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   commissionedLeagues League[]       @relation("Commissioner")
   leagueMembers       LeagueMember[]

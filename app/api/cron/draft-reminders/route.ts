@@ -33,22 +33,25 @@ export async function GET(request: Request) {
     },
     include: {
       members: {
-        include: { user: { select: { email: true, username: true } } },
+        include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } },
       },
     },
   });
 
   for (const league of twoHourLeagues) {
     await Promise.all(
-      league.members.map((m) =>
-        sendDraftReminder({
-          to: m.user.email,
-          username: m.user.username,
-          leagueName: league.name,
-          leagueId: league.id,
-          draftAt: league.draftScheduledAt!,
-        })
-      )
+      league.members
+        .filter((m) => !m.user.emailUnsubscribed)
+        .map((m) =>
+          sendDraftReminder({
+            to: m.user.email,
+            userId: m.user.id,
+            username: m.user.username,
+            leagueName: league.name,
+            leagueId: league.id,
+            draftAt: league.draftScheduledAt!,
+          })
+        )
     );
     await prisma.league.update({
       where: { id: league.id },
@@ -68,21 +71,24 @@ export async function GET(request: Request) {
     },
     include: {
       members: {
-        include: { user: { select: { email: true, username: true } } },
+        include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } },
       },
     },
   });
 
   for (const league of finalLeagues) {
     await Promise.all(
-      league.members.map((m) =>
-        sendDraftFinalReminder({
-          to: m.user.email,
-          username: m.user.username,
-          leagueName: league.name,
-          leagueId: league.id,
-        })
-      )
+      league.members
+        .filter((m) => !m.user.emailUnsubscribed)
+        .map((m) =>
+          sendDraftFinalReminder({
+            to: m.user.email,
+            userId: m.user.id,
+            username: m.user.username,
+            leagueName: league.name,
+            leagueId: league.id,
+          })
+        )
     );
     await prisma.league.update({
       where: { id: league.id },

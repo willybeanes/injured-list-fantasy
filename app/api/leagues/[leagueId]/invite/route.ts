@@ -94,17 +94,21 @@ export async function POST(
   // Check if user already has an account
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
+    select: { id: true, emailUnsubscribed: true },
   });
 
   const inviterUsername = league.commissioner.username;
 
   if (existingUser) {
-    await sendLeagueInviteToExistingUser({
-      to: normalizedEmail,
-      inviterUsername,
-      leagueName: league.name,
-      acceptUrl: `${APP_URL}/invites/${token}`,
-    });
+    if (!existingUser.emailUnsubscribed) {
+      await sendLeagueInviteToExistingUser({
+        to: normalizedEmail,
+        userId: existingUser.id,
+        inviterUsername,
+        leagueName: league.name,
+        acceptUrl: `${APP_URL}/invites/${token}`,
+      });
+    }
   } else {
     await sendLeagueInviteToNewUser({
       to: normalizedEmail,

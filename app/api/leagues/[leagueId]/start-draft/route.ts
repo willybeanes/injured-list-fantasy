@@ -19,7 +19,7 @@ export async function POST(
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     include: {
-      members: { include: { user: { select: { email: true, username: true } } } },
+      members: { include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } } },
       _count: { select: { members: true } },
     },
   });
@@ -57,14 +57,17 @@ export async function POST(
 
   // Notify all members in parallel (fire-and-forget; don't block the response)
   void Promise.all(
-    league.members.map((m) =>
-      sendDraftStartingEmail({
-        to: m.user.email!,
-        username: m.user.username ?? "Manager",
-        leagueName: league.name,
-        leagueId,
-      })
-    )
+    league.members
+      .filter((m) => !m.user.emailUnsubscribed)
+      .map((m) =>
+        sendDraftStartingEmail({
+          to: m.user.email!,
+          userId: m.user.id,
+          username: m.user.username ?? "Manager",
+          leagueName: league.name,
+          leagueId,
+        })
+      )
   );
 
   return NextResponse.json({ ok: true, startsAt: startsAt.toISOString() });

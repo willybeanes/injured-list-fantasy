@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchAllRosterPlayers, fetchRecentIlPlacements } from "@/lib/mlb-api";
-import { sendInjuryAlert, sendWeeklySummary } from "@/lib/email";
+import { sendInjuryAlert } from "@/lib/email";
 import { currentSeasonYear } from "@/lib/utils";
 
 /**
@@ -216,15 +216,17 @@ export async function GET(request: Request) {
           include: {
             roster: {
               include: {
-                user: { select: { email: true, username: true } },
+                user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } },
               },
             },
           },
         });
 
         for (const rp of affectedRosters) {
+          if (rp.roster.user.emailUnsubscribed) continue;
           await sendInjuryAlert({
             to: rp.roster.user.email,
+            userId: rp.roster.user.id,
             username: rp.roster.user.username,
             playerName: injured.fullName,
             ilStatus: injured.status,
@@ -233,35 +235,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // ─── Step 5: Monday weekly summary + reset ───────────────────────────────
+    // ─── Step 5: Monday reset ────────────────────────────────────────────────
     if (isMondayReset) {
-      if (process.env.RESEND_API_KEY) {
-        const rostersForSummary = await prisma.roster.findMany({
-          include: {
-            user: { select: { email: true, username: true } },
-            league: { select: { name: true } },
-          },
-        });
-
-        for (const roster of rostersForSummary) {
-          const leagueRosters2 = await prisma.roster.findMany({
-            where: { leagueId: roster.leagueId },
-            orderBy: { totalIlDays: "desc" },
-          });
-          const rank = leagueRosters2.findIndex((r) => r.userId === roster.userId) + 1;
-
-          await sendWeeklySummary({
-            to: roster.user.email,
-            username: roster.user.username,
-            weeklyIlDays: roster.weeklyIlDays,
-            leagueRank: rank || null,
-            leagueName: roster.league.name,
-            totalIlDays: roster.totalIlDays,
-          });
-        }
-      }
-
-      // Reset weekly IL days for all rosters
       await prisma.roster.updateMany({
         data: { weeklyIlDays: 0 },
       });

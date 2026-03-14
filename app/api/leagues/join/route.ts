@@ -88,21 +88,24 @@ export async function POST(request: Request) {
   if (newMemberCount >= league.maxTeams && process.env.RESEND_API_KEY) {
     const allMembers = await prisma.leagueMember.findMany({
       where: { leagueId: league.id },
-      include: { user: { select: { email: true, username: true, id: true } } },
+      include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } },
     });
     const leagueUrl = `${process.env.NEXT_PUBLIC_APP_URL}/leagues/${league.id}`;
     const { sendLeagueFullEmail } = await import("@/lib/email");
     await Promise.allSettled(
-      allMembers.map((m) =>
-        sendLeagueFullEmail({
-          to: m.user.email,
-          username: m.user.username,
-          leagueName: league.name,
-          teamCount: league.maxTeams,
-          isCommissioner: m.user.id === league.commissionerId,
-          leagueUrl,
-        })
-      )
+      allMembers
+        .filter((m) => !m.user.emailUnsubscribed)
+        .map((m) =>
+          sendLeagueFullEmail({
+            to: m.user.email,
+            userId: m.user.id,
+            username: m.user.username,
+            leagueName: league.name,
+            teamCount: league.maxTeams,
+            isCommissioner: m.user.id === league.commissionerId,
+            leagueUrl,
+          })
+        )
     );
   }
 

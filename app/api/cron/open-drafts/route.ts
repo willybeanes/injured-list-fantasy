@@ -34,8 +34,8 @@ export async function GET(request: Request) {
     },
     include: {
       _count: { select: { members: true } },
-      members: { include: { user: { select: { email: true, username: true } } } },
-      commissioner: { select: { email: true, username: true } },
+      members: { include: { user: { select: { id: true, email: true, username: true, emailUnsubscribed: true } } } },
+      commissioner: { select: { id: true, email: true, username: true, emailUnsubscribed: true } },
     },
   });
 
@@ -104,18 +104,21 @@ export async function GET(request: Request) {
       if (process.env.RESEND_API_KEY) {
         const { sendDraftDelayedEmail } = await import("@/lib/email");
         await Promise.allSettled(
-          league.members.map((m) =>
-            sendDraftDelayedEmail({
-              to: m.user.email,
-              username: m.user.username,
-              leagueName: league.name,
-              newDraftTime: newTimeStr,
-              spotsLeft,
-              delayNumber: delayNum,
-              maxDelays: MAX_DELAYS,
-              lobbyUrl: `${process.env.NEXT_PUBLIC_APP_URL}/lobby`,
-            })
-          )
+          league.members
+            .filter((m) => !m.user.emailUnsubscribed)
+            .map((m) =>
+              sendDraftDelayedEmail({
+                to: m.user.email,
+                userId: m.user.id,
+                username: m.user.username,
+                leagueName: league.name,
+                newDraftTime: newTimeStr,
+                spotsLeft,
+                delayNumber: delayNum,
+                maxDelays: MAX_DELAYS,
+                lobbyUrl: `${process.env.NEXT_PUBLIC_APP_URL}/lobby`,
+              })
+            )
         );
       }
     } else {
@@ -138,14 +141,17 @@ export async function GET(request: Request) {
       // Only email on the first breach of MAX_DELAYS (delayCount was exactly MAX_DELAYS)
       if (league.delayCount === MAX_DELAYS && process.env.RESEND_API_KEY) {
         const { sendDraftDecisionNeededEmail } = await import("@/lib/email");
-        await sendDraftDecisionNeededEmail({
-          to: league.commissioner.email,
-          commissionerUsername: league.commissioner.username,
-          leagueName: league.name,
-          memberCount: league._count.members,
-          maxTeams: league.maxTeams,
-          leagueUrl: `${process.env.NEXT_PUBLIC_APP_URL}/leagues/${league.id}`,
-        }).catch(() => {});
+        if (!league.commissioner.emailUnsubscribed) {
+          await sendDraftDecisionNeededEmail({
+            to: league.commissioner.email,
+            userId: league.commissioner.id,
+            commissionerUsername: league.commissioner.username,
+            leagueName: league.name,
+            memberCount: league._count.members,
+            maxTeams: league.maxTeams,
+            leagueUrl: `${process.env.NEXT_PUBLIC_APP_URL}/leagues/${league.id}`,
+          }).catch(() => {});
+        }
       }
     }
   }
