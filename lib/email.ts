@@ -26,7 +26,8 @@ export async function sendInjuryAlert({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `🚑 ${playerName} placed on ${ilLabel} — +1 pt/day`,
+      subject: `Injury Alert: ${playerName} placed on ${ilLabel}`,
+      text: `Hey ${username},\n\n${playerName} has been placed on the ${ilLabel}. This adds +1 point per day to your roster score.\n\nView your dashboard: ${APP_URL}/dashboard\n\nYou're receiving this because you have ${playerName} on your Injured List Fantasy roster.`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -43,7 +44,7 @@ export async function sendInjuryAlert({
             <p style="margin:8px 0 0;color:#8892a4;font-size:13px;">+1 point per day added to your roster score</p>
           </div>
           <a href="${APP_URL}/dashboard" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            View Dashboard →
+            View Dashboard
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             You're receiving this because you have ${playerName} on your Injured List Fantasy roster.
@@ -71,7 +72,8 @@ export async function sendLeagueInvite({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `${inviterUsername} invited you to ${leagueName}`,
+      subject: `${inviterUsername} invited you to join ${leagueName}`,
+      text: `You've been invited!\n\n${inviterUsername} has invited you to join ${leagueName} on Injured List Fantasy.\n\nYour invite code: ${inviteCode}\n\nCreate a free account to join: ${APP_URL}/signup`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">You're Invited!</h1>
@@ -84,7 +86,7 @@ export async function sendLeagueInvite({
             <p style="font-size:28px;font-weight:800;letter-spacing:0.15em;color:#dc2f1f;margin:0;">${inviteCode}</p>
           </div>
           <a href="${APP_URL}/signup" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            Join the League →
+            Join the League
           </a>
         </div>
       `,
@@ -109,7 +111,8 @@ export async function sendLeagueInviteToExistingUser({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `${inviterUsername} invited you to ${leagueName}`,
+      subject: `${inviterUsername} invited you to join ${leagueName}`,
+      text: `You're invited!\n\n${inviterUsername} has invited you to join ${leagueName} on Injured List Fantasy.\n\nAccept your invitation: ${acceptUrl}\n\nThis invite expires in 7 days. If you didn't expect this, you can ignore this email.`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -129,7 +132,7 @@ export async function sendLeagueInviteToExistingUser({
             <p style="font-size:13px;color:#8892a4;margin:4px 0 0;">Invited by ${inviterUsername}</p>
           </div>
           <a href="${acceptUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            Accept Invitation →
+            Accept Invitation
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             This invite expires in 7 days. If you didn&apos;t expect this, you can ignore this email.
@@ -157,7 +160,8 @@ export async function sendLeagueInviteToNewUser({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `${inviterUsername} invited you to ${leagueName}`,
+      subject: `${inviterUsername} invited you to join ${leagueName}`,
+      text: `You're invited!\n\n${inviterUsername} has invited you to join ${leagueName} on Injured List Fantasy.\n\nCreate a free account to accept this invitation and join the league:\n${signupUrl}\n\nThis invite expires in 7 days. If you didn't expect this, you can ignore this email.`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -180,7 +184,7 @@ export async function sendLeagueInviteToNewUser({
             Create a free account to accept this invitation and join the league.
           </p>
           <a href="${signupUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            Create Account &amp; Join →
+            Create Account &amp; Join
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             This invite expires in 7 days. If you didn&apos;t expect this, you can ignore this email.
@@ -215,7 +219,8 @@ export async function sendDraftReminder({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `⏰ Draft starts in 2 hours — ${leagueName}`,
+      subject: `Draft reminder: ${leagueName} starts in 2 hours`,
+      text: `Hey ${username},\n\nYour draft for ${leagueName} starts in 2 hours at ${timeStr}.\n\nThe draft room opens 5 minutes before the scheduled time.\n\nGo to draft room: ${APP_URL}/draft/${leagueId}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -232,7 +237,7 @@ export async function sendDraftReminder({
             <p style="font-size:13px;color:#dc2f1f;font-weight:600;margin:6px 0 0;">Draft at ${timeStr}</p>
           </div>
           <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            Go to Draft Room →
+            Go to Draft Room
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             The draft room opens 5 minutes before the scheduled time.
@@ -260,7 +265,8 @@ export async function sendDraftFinalReminder({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `🚨 Your draft is starting now — ${leagueName}`,
+      subject: `Your draft is starting now — ${leagueName}`,
+      text: `Hey ${username},\n\nThe draft room for ${leagueName} is open now — get in there!\n\nEnter the draft room: ${APP_URL}/draft/${leagueId}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -274,10 +280,10 @@ export async function sendDraftFinalReminder({
           <div style="background:#191d26;border:1px solid #dc2f1f;border-radius:12px;padding:16px;margin-bottom:20px;">
             <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">League</p>
             <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${leagueName}</p>
-            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">🔴 Live now</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">Live now</p>
           </div>
           <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            Enter Draft Room →
+            Enter Draft Room
           </a>
         </div>
       `,
@@ -304,7 +310,8 @@ export async function sendDraftStartingEmail({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `🚨 Your draft is starting in 5 minutes — ${leagueName}`,
+      subject: `Draft starting in 5 minutes — ${leagueName}`,
+      text: `Hey ${username},\n\nYour commissioner has started the draft countdown for ${leagueName}. The draft begins in 5 minutes!\n\nEnter the draft room: ${APP_URL}/draft/${leagueId}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -318,10 +325,10 @@ export async function sendDraftStartingEmail({
           <div style="background:#191d26;border:1px solid #dc2f1f;border-radius:12px;padding:16px;margin-bottom:20px;">
             <p style="color:#8892a4;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">League</p>
             <p style="font-size:17px;font-weight:800;color:#edf0f5;margin:0;">${leagueName}</p>
-            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">⏱ Countdown is live</p>
+            <p style="font-size:13px;color:#dc2f1f;font-weight:700;margin:6px 0 0;">Countdown is live</p>
           </div>
           <a href="${APP_URL}/draft/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            Enter Draft Room →
+            Enter Draft Room
           </a>
         </div>
       `,
@@ -362,7 +369,8 @@ export async function sendDraftScheduledEmail({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `📅 Draft ${verb} — ${leagueName}`,
+      subject: `Draft ${verb}: ${leagueName} — ${dateStr}`,
+      text: `Hey ${username},\n\nYour commissioner has ${verb} the draft for ${leagueName}.\n\nDraft time: ${dateStr} at ${timeStr}\n\nThe draft room opens 5 minutes before the scheduled time.\n\nView league: ${APP_URL}/leagues/${leagueId}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -379,7 +387,7 @@ export async function sendDraftScheduledEmail({
             <p style="font-size:13px;color:#dc2f1f;font-weight:600;margin:6px 0 0;">${timeStr}</p>
           </div>
           <a href="${APP_URL}/leagues/${leagueId}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:12px 24px;border-radius:9px;font-weight:700;font-size:14px;">
-            View League →
+            View League
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             The draft room opens 5 minutes before the scheduled time.
@@ -411,7 +419,8 @@ export async function sendWeeklySummary({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `Your weekly summary: ${weeklyIlDays} IL days earned`,
+      subject: `Weekly summary: ${weeklyIlDays} IL days earned — ${leagueName}`,
+      text: `Hey ${username},\n\nHere's your weekly summary for ${leagueName}:\n\nThis week: ${weeklyIlDays} IL days earned\nLeague rank: ${leagueRank ? `#${leagueRank}` : "—"}\nSeason total: ${totalIlDays} IL days\n\nView your dashboard: ${APP_URL}/dashboard`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Weekly Summary</h1>
@@ -433,7 +442,7 @@ export async function sendWeeklySummary({
             <p style="font-size:24px;font-weight:800;color:#edf0f5;margin:0;">${totalIlDays}d</p>
           </div>
           <a href="${APP_URL}/dashboard" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            View Full Dashboard →
+            View Full Dashboard
           </a>
         </div>
       `,
@@ -453,14 +462,15 @@ export async function sendDraftDelayedEmail({
 }) {
   const remaining = maxDelays - delayNumber;
   const urgencyNote = remaining === 0
-    ? `⚠️ This is the final auto-delay. After this, the commissioner will decide whether to start with fewer teams or cancel.`
+    ? `This is the final auto-delay. After this, the commissioner will decide whether to start with fewer teams or cancel.`
     : `This league can be auto-delayed ${remaining} more time${remaining === 1 ? "" : "s"} if it isn't full.`;
 
   try {
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `⏰ Draft delayed — ${leagueName} needs ${spotsLeft} more team${spotsLeft === 1 ? "" : "s"}`,
+      subject: `Draft delayed: ${leagueName} needs ${spotsLeft} more team${spotsLeft === 1 ? "" : "s"}`,
+      text: `Hey ${username},\n\nThe draft for ${leagueName} didn't have enough teams to start and has been automatically delayed.\n\nNew draft time: ${newDraftTime}\n${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} still open — share the lobby link!\n\n${urgencyNote}\n\nView public lobby: ${lobbyUrl}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -479,12 +489,12 @@ export async function sendDraftDelayedEmail({
               <p style="margin:4px 0 0;font-size:15px;font-weight:700;color:#edf0f5;">${newDraftTime}</p>
             </div>
             <div style="margin-top:10px;">
-              <p style="margin:0;font-size:13px;color:#f59e0b;">⏰ ${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} still open — share the lobby link!</p>
+              <p style="margin:0;font-size:13px;color:#f59e0b;">${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} still open — share the lobby link!</p>
             </div>
           </div>
           <p style="color:#8892a4;font-size:13px;margin:0 0 16px;">${urgencyNote}</p>
           <a href="${lobbyUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            View Public Lobby →
+            View Public Lobby
           </a>
         </div>
       `,
@@ -504,7 +514,8 @@ export async function sendDraftDecisionNeededEmail({
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `⚠️ Action needed — ${leagueName} isn't full after 3 delays`,
+      subject: `Action needed: ${leagueName} isn't full after 3 delays`,
+      text: `Hey ${commissionerUsername},\n\nYour league ${leagueName} has been auto-delayed 3 times and still has ${memberCount}/${maxTeams} teams. No more auto-delays remain.\n\nAs commissioner, you can:\n- Start the draft now with ${memberCount} teams\n- Cancel the league\n\nGo to league: ${leagueUrl}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -525,7 +536,7 @@ export async function sendDraftDecisionNeededEmail({
             </ul>
           </div>
           <a href="${leagueUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            Go to League →
+            Go to League
           </a>
         </div>
       `,
@@ -553,12 +564,16 @@ export async function sendLeagueFullEmail({
   const commissionerNote = isCommissioner
     ? `<p style="margin:8px 0 0;color:#22c55e;font-size:13px;font-weight:600;">As commissioner, you can now schedule or start the draft.</p>`
     : `<p style="margin:8px 0 0;color:#8892a4;font-size:13px;">Keep an eye out for a draft time announcement from your commissioner.</p>`;
+  const commissionerNotePlain = isCommissioner
+    ? `As commissioner, you can now schedule or start the draft.`
+    : `Keep an eye out for a draft time announcement from your commissioner.`;
 
   try {
     await getResend().emails.send({
       from: FROM,
       to,
-      subject: `🎉 ${leagueName} is full — draft time!`,
+      subject: `${leagueName} is full — time to draft!`,
+      text: `Hey ${username},\n\n${leagueName} is full with ${teamCount}/${teamCount} teams!\n\n${commissionerNotePlain}\n\nView league: ${leagueUrl}\n\nYou're receiving this because you're a member of ${leagueName} on Injured List Fantasy.`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -575,7 +590,7 @@ export async function sendLeagueFullEmail({
             ${commissionerNote}
           </div>
           <a href="${leagueUrl}" style="display:inline-block;background:#dc2f1f;color:white;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:14px;">
-            Go to League →
+            Go to League
           </a>
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             You're receiving this because you're a member of ${leagueName} on Injured List Fantasy.
