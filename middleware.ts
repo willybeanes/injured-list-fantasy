@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // If not logged in and trying to access protected route
-  if (!user && !PUBLIC_ROUTES.includes(pathname) && !pathname.startsWith("/invites") && !pathname.startsWith("/api")) {
+  if (!user && !PUBLIC_ROUTES.includes(pathname) && !pathname.startsWith("/invites") && !pathname.startsWith("/api") && !pathname.startsWith("/unsubscribe")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
