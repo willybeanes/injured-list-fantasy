@@ -95,7 +95,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { status, maxTeams, draftScheduledAt } = body;
+  const { status, maxTeams, pickTimerSeconds, draftScheduledAt } = body;
 
   // Validate status transitions.
   // NOTE: upcoming → drafting is intentionally NOT here — that transition
@@ -136,6 +136,16 @@ export async function PATCH(
     }
   }
 
+  // Validate pickTimerSeconds change
+  if (pickTimerSeconds !== undefined) {
+    if (league.status !== "upcoming") {
+      return NextResponse.json({ error: "Cannot change pick timer after the draft has started" }, { status: 400 });
+    }
+    if (![45, 60, 90].includes(pickTimerSeconds)) {
+      return NextResponse.json({ error: "Pick timer must be 45, 60, or 90 seconds" }, { status: 400 });
+    }
+  }
+
   // Validate draftScheduledAt change
   if (draftScheduledAt !== undefined) {
     if (league.status !== "upcoming") {
@@ -160,6 +170,7 @@ export async function PATCH(
   const updateData: Record<string, unknown> = {};
   if (status) updateData.status = status;
   if (maxTeams !== undefined) updateData.maxTeams = maxTeams;
+  if (pickTimerSeconds !== undefined) updateData.pickTimerSeconds = pickTimerSeconds;
   if (draftScheduledAt !== undefined) {
     updateData.draftScheduledAt = draftScheduledAt ? new Date(draftScheduledAt) : null;
     // Reset reminder flags whenever the time changes so reminders fire correctly

@@ -63,6 +63,7 @@ interface LeagueDetail {
   draftScheduledAt: string | null;
   isPublic: boolean;
   delayCount: number;
+  pickTimerSeconds: number;
 }
 
 export default function LeagueDetailPage() {
@@ -738,6 +739,7 @@ function LeagueSettingsModal({
   onSaved: (updated: Partial<LeagueDetail>) => void;
 }) {
   const [maxTeams, setMaxTeams] = useState(league.maxTeams);
+  const [pickTimerSeconds, setPickTimerSeconds] = useState(league.pickTimerSeconds ?? 90);
   const [scheduledDate, setScheduledDate] = useState<string>(
     league.draftScheduledAt ? toLocalDateString(league.draftScheduledAt) : ""
   );
@@ -768,14 +770,16 @@ function LeagueSettingsModal({
 
   const handleSave = async () => {
     const maxTeamsChanged = maxTeams !== league.maxTeams;
+    const timerChanged = pickTimerSeconds !== (league.pickTimerSeconds ?? 90);
     const schedChanged = scheduledDate !== originalDate || scheduledTime !== originalTime;
-    if (!maxTeamsChanged && !schedChanged) { onClose(); return; }
+    if (!maxTeamsChanged && !timerChanged && !schedChanged) { onClose(); return; }
 
     setLoading(true);
     setError(null);
 
     const patchBody: Record<string, unknown> = {};
     if (maxTeamsChanged) patchBody.maxTeams = maxTeams;
+    if (timerChanged) patchBody.pickTimerSeconds = pickTimerSeconds;
     if (schedChanged) {
       patchBody.draftScheduledAt = scheduledDate
         ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
@@ -797,6 +801,7 @@ function LeagueSettingsModal({
 
     onSaved({
       maxTeams: data.league.maxTeams,
+      pickTimerSeconds: data.league.pickTimerSeconds,
       _count: data.league._count,
       draftScheduledAt: data.league.draftScheduledAt ?? null,
     });
@@ -854,6 +859,28 @@ function LeagueSettingsModal({
             <p className="text-xs text-[var(--text-muted)]">
               {currentMemberCount} of {maxTeams} spots filled
             </p>
+          </div>
+
+          {/* Time Per Pick */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-[var(--text-secondary)]">Time Per Pick</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[45, 60, 90].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPickTimerSeconds(s)}
+                  className={cn(
+                    "py-2.5 rounded-input text-sm font-extrabold border transition-colors",
+                    pickTimerSeconds === s
+                      ? "bg-brand-red text-white border-brand-red"
+                      : "bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  {s}s
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Schedule Draft */}
