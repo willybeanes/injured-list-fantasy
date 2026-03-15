@@ -145,7 +145,9 @@ export default function DraftRoomPage() {
   const { addNotification } = useNotifications();
   const supabase = createClient();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const autoPickTriggeredRef = useRef(false);
+  // Start as true so the auto-pick effect doesn't fire on mount (timeLeft initializes to 0).
+  // The timer effect resets this to false once it properly initializes the countdown.
+  const autoPickTriggeredRef = useRef(true);
   const prevPickNumberRef = useRef<number | null>(null);
   // Auto-pick mode: user opts in to being auto-picked for after 5s
   const [autoPickMode, setAutoPickMode] = useState(false);
