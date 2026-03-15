@@ -248,6 +248,20 @@ export default function DraftRoomPage() {
     };
   }, [leagueId, loadDraftState, loadPlayers, supabase]);
 
+  // If the draft is still "upcoming" but the scheduled time has passed, nudge the
+  // open-drafts cron so the league transitions to "drafting" without waiting up to 5 min.
+  useEffect(() => {
+    if (!draftState) return;
+    if (draftState.status !== "upcoming") return;
+    if (!draftState.draftScheduledAt) return;
+    if (new Date(draftState.draftScheduledAt) > new Date()) return;
+    // Scheduled time is in the past and still upcoming — nudge activation then reload
+    fetch(`/api/draft/${leagueId}/activate`, { method: "POST" })
+      .then(() => loadDraftState())
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftState?.status, draftState?.draftScheduledAt]);
+
   // Supabase Presence — track who's in the draft room and their auto-pick status
   useEffect(() => {
     if (!draftState?.myUserId) return;
