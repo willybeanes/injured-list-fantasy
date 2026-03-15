@@ -117,18 +117,21 @@ export async function POST(
     },
   });
 
-  // Check if draft is complete — transition league to active
   const newTotalPicks = totalPicksMade + 1;
-  if (newTotalPicks >= totalPicksAllowed) {
-    await prisma.league.update({
-      where: { id: leagueId },
-      data: { status: "active" },
-    });
-  }
+  const draftComplete = newTotalPicks >= totalPicksAllowed;
+
+  await prisma.league.update({
+    where: { id: leagueId },
+    data: {
+      status: draftComplete ? "active" : "drafting",
+      // Stamp when this new pick slot opened so the cron can detect stalls
+      currentPickStartedAt: draftComplete ? null : new Date(),
+    },
+  });
 
   return NextResponse.json({
     ok: true,
     player: { id: player.id, fullName: player.fullName },
-    draftComplete: newTotalPicks >= totalPicksAllowed,
+    draftComplete,
   });
 }

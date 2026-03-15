@@ -70,6 +70,7 @@ model League {
   draftScheduledAt         DateTime?
   draftReminderSentAt      DateTime?
   draftFinalReminderSentAt DateTime?
+  currentPickStartedAt     DateTime?
   createdAt                DateTime     @default(now())
 
   members LeagueMember[]

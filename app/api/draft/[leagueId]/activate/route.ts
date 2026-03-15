@@ -52,7 +52,7 @@ export async function POST(
 
   const updated = await prisma.league.update({
     where: { id: leagueId },
-    data: { status: "drafting" },
+    data: { status: "drafting", currentPickStartedAt: new Date() },
   });
 
   return NextResponse.json({ status: updated.status });

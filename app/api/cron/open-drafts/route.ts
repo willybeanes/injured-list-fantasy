@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { runAutoPick } from "@/lib/draft";
 
 const MAX_DELAYS = 3;
 const DELAY_HOURS = 24;
+// Safety cap: max picks to auto-advance per league per cron run (prevents runaway loops)
+const MAX_CATCH_UP_PICKS = 100;
 
 /**
  * GET /api/cron/open-drafts
@@ -14,6 +17,10 @@ const DELAY_HOURS = 24;
  *   - Private + not full → clear draftScheduledAt (commissioner must reschedule)
  *   - Public + not full + delayCount < MAX_DELAYS → delay 24hr, notify members
  *   - Public + not full + delayCount >= MAX_DELAYS → notify commissioner to decide
+ *
+ * Additionally, for each actively drafting league:
+ *   - If currentPickStartedAt + pickTimerSeconds < now → pick has stalled
+ *   - Auto-pick until caught up or draft completes (handles overnight abandonment)
  */
 export async function GET(request: Request) {
   const secret = new URL(request.url).searchParams.get("secret");
@@ -24,13 +31,12 @@ export async function GET(request: Request) {
   const now = new Date();
   const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
+  // ── 1. Open scheduled drafts ─────────────────────────────────────────────
+
   const leaguesToProcess = await prisma.league.findMany({
     where: {
       status: "upcoming",
-      draftScheduledAt: {
-        not: null,
-        lte: fiveMinutesFromNow,
-      },
+      draftScheduledAt: { not: null, lte: fiveMinutesFromNow },
     },
     include: {
       _count: { select: { members: true } },
@@ -38,10 +44,6 @@ export async function GET(request: Request) {
       commissioner: { select: { id: true, email: true, username: true, emailUnsubscribed: true } },
     },
   });
-
-  if (leaguesToProcess.length === 0) {
-    return NextResponse.json({ opened: 0, delayed: 0, pendingDecision: 0 });
-  }
 
   const opened: string[] = [];
   const cleared: string[] = [];
@@ -51,33 +53,25 @@ export async function GET(request: Request) {
   for (const league of leaguesToProcess) {
     const isFull = league._count.members === league.maxTeams;
 
-    // Any full league → open draft immediately
     if (isFull) {
       await prisma.league.update({
         where: { id: league.id },
-        data: { status: "drafting" },
+        data: { status: "drafting", currentPickStartedAt: new Date() },
       });
       opened.push(league.id);
       continue;
     }
 
-    // Private + not full → clear the scheduled time, commissioner must reschedule
     if (!league.isPublic) {
       await prisma.league.update({
         where: { id: league.id },
-        data: {
-          draftScheduledAt: null,
-          draftReminderSentAt: null,
-          draftFinalReminderSentAt: null,
-        },
+        data: { draftScheduledAt: null, draftReminderSentAt: null, draftFinalReminderSentAt: null },
       });
       cleared.push(league.id);
       continue;
     }
 
-    // Public + not full: check delay count
     if (league.delayCount < MAX_DELAYS) {
-      // Auto-delay by 24 hours
       const newDraftTime = new Date(
         (league.draftScheduledAt as Date).getTime() + DELAY_HOURS * 60 * 60 * 1000
       );
@@ -86,23 +80,19 @@ export async function GET(request: Request) {
         data: {
           draftScheduledAt: newDraftTime,
           delayCount: league.delayCount + 1,
-          // Reset reminder flags so reminders fire again for the new time
           draftReminderSentAt: null,
           draftFinalReminderSentAt: null,
         },
       });
       delayed.push(league.id);
 
-      // Notify all members about the delay
-      const spotsLeft = league.maxTeams - league._count.members;
-      const delayNum = league.delayCount + 1;
-      const newTimeStr = newDraftTime.toLocaleString("en-US", {
-        weekday: "short", month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit",
-      });
-
       if (process.env.RESEND_API_KEY) {
         const { sendDraftDelayedEmail } = await import("@/lib/email");
+        const spotsLeft = league.maxTeams - league._count.members;
+        const newTimeStr = newDraftTime.toLocaleString("en-US", {
+          weekday: "short", month: "short", day: "numeric",
+          hour: "numeric", minute: "2-digit",
+        });
         await Promise.allSettled(
           league.members
             .filter((m) => !m.user.emailUnsubscribed)
@@ -114,7 +104,7 @@ export async function GET(request: Request) {
                 leagueName: league.name,
                 newDraftTime: newTimeStr,
                 spotsLeft,
-                delayNumber: delayNum,
+                delayNumber: league.delayCount + 1,
                 maxDelays: MAX_DELAYS,
                 lobbyUrl: `${process.env.NEXT_PUBLIC_APP_URL}/lobby`,
               })
@@ -122,8 +112,6 @@ export async function GET(request: Request) {
         );
       }
     } else {
-      // Past max delays — bump draft another 24 hrs to prevent repeated cron triggers.
-      // Only send the "decision needed" email the first time (when delayCount === MAX_DELAYS).
       const newDraftTime = new Date(
         (league.draftScheduledAt as Date).getTime() + DELAY_HOURS * 60 * 60 * 1000
       );
@@ -138,7 +126,6 @@ export async function GET(request: Request) {
       });
       pendingDecision.push(league.id);
 
-      // Only email on the first breach of MAX_DELAYS (delayCount was exactly MAX_DELAYS)
       if (league.delayCount === MAX_DELAYS && process.env.RESEND_API_KEY) {
         const { sendDraftDecisionNeededEmail } = await import("@/lib/email");
         if (!league.commissioner.emailUnsubscribed) {
@@ -156,11 +143,52 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── 2. Advance stalled active drafts ─────────────────────────────────────
+
+  const stalledLeagues = await prisma.league.findMany({
+    where: {
+      status: "drafting",
+      currentPickStartedAt: { not: null },
+    },
+    select: { id: true, pickTimerSeconds: true, currentPickStartedAt: true },
+  });
+
+  const advanced: Record<string, number> = {}; // leagueId → picks auto-advanced
+
+  for (const league of stalledLeagues) {
+    const deadline = new Date(
+      league.currentPickStartedAt!.getTime() + league.pickTimerSeconds * 1000
+    );
+    if (deadline > now) continue; // Timer hasn't expired yet — nothing to do
+
+    let picks = 0;
+    while (picks < MAX_CATCH_UP_PICKS) {
+      const result = await runAutoPick(league.id);
+      if (!result.ok) break; // Draft complete or error
+      picks++;
+      if (result.draftComplete) break;
+
+      // Check if the NEXT pick is also already overdue (catching up after long absence)
+      const updated = await prisma.league.findUnique({
+        where: { id: league.id },
+        select: { currentPickStartedAt: true, status: true },
+      });
+      if (!updated || updated.status !== "drafting" || !updated.currentPickStartedAt) break;
+      const nextDeadline = new Date(
+        updated.currentPickStartedAt.getTime() + league.pickTimerSeconds * 1000
+      );
+      if (nextDeadline > now) break; // Next pick is still within its window
+    }
+
+    if (picks > 0) advanced[league.id] = picks;
+  }
+
   return NextResponse.json({
     opened: opened.length,
     cleared: cleared.length,
     delayed: delayed.length,
     pendingDecision: pendingDecision.length,
-    leagues: { opened, cleared, delayed, pendingDecision },
+    advanced: Object.keys(advanced).length,
+    leagues: { opened, cleared, delayed, pendingDecision, advanced },
   });
 }
