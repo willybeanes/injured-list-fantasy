@@ -774,6 +774,13 @@ export default function DraftRoomPage() {
                       <span className="ml-1.5 text-xs text-[var(--text-muted)]">(you)</span>
                     )}
                   </span>
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      presenceMap.has(team.userId) ? "bg-green-400" : "bg-[var(--border)]"
+                    )}
+                    title={presenceMap.has(team.userId) ? "Online" : "Not in room yet"}
+                  />
                 </div>
               ))}
             </div>
