@@ -158,6 +158,11 @@ model GlobalScore {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model BlockedEmail {
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model LeagueInvite {
   id          String   @id @default(uuid())
   leagueId    String

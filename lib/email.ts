@@ -10,8 +10,16 @@ function getResend() {
 const FROM = "Injured List Fantasy <noreply@injuredlistfantasy.com>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+function logoImg() {
+  return `<img src="${APP_URL}/email-icon.png" width="36" height="36" alt="Injured List Fantasy" style="display:block;border-radius:8px;">`;
+}
+
 function unsubscribeUrl(userId: string) {
   return `${APP_URL}/unsubscribe?uid=${userId}`;
+}
+
+function unsubscribeUrlByToken(token: string) {
+  return `${APP_URL}/unsubscribe?token=${token}`;
 }
 
 function unsubscribeFooterHtml(userId: string) {
@@ -20,8 +28,18 @@ function unsubscribeFooterHtml(userId: string) {
   </p>`;
 }
 
+function unsubscribeFooterHtmlByToken(token: string) {
+  return `<p style="color:#505c6e;font-size:11px;margin-top:24px;border-top:1px solid #1e2533;padding-top:12px;">
+    Don't want these emails? <a href="${unsubscribeUrlByToken(token)}" style="color:#505c6e;">Unsubscribe</a>
+  </p>`;
+}
+
 function unsubscribeFooterText(userId: string) {
   return `\n\nTo unsubscribe from all emails: ${unsubscribeUrl(userId)}`;
+}
+
+function unsubscribeFooterTextByToken(token: string) {
+  return `\n\nTo unsubscribe from all emails: ${unsubscribeUrlByToken(token)}`;
 }
 
 export async function sendInjuryAlert({
@@ -47,9 +65,7 @@ export async function sendInjuryAlert({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">🏥</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Injury Alert</h1>
@@ -136,9 +152,7 @@ export async function sendLeagueInviteToExistingUser({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">🩼</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">You&apos;re Invited!</h1>
@@ -171,25 +185,24 @@ export async function sendLeagueInviteToNewUser({
   inviterUsername,
   leagueName,
   signupUrl,
+  unsubToken,
 }: {
   to: string;
   inviterUsername: string;
   leagueName: string;
   signupUrl: string;
+  unsubToken: string;
 }) {
-  // Sent to non-users — no unsubscribe link needed
   try {
     await getResend().emails.send({
       from: FROM,
       to,
       subject: `${inviterUsername} invited you to join ${leagueName}`,
-      text: `You're invited!\n\n${inviterUsername} has invited you to join ${leagueName} on Injured List Fantasy.\n\nCreate a free account to accept this invitation and join the league:\n${signupUrl}\n\nThis invite expires in 7 days. If you didn't expect this, you can ignore this email.`,
+      text: `You're invited!\n\n${inviterUsername} has invited you to join ${leagueName} on Injured List Fantasy.\n\nCreate a free account to accept this invitation and join the league:\n${signupUrl}\n\nThis invite expires in 7 days. If you didn't expect this, you can ignore this email.${unsubscribeFooterTextByToken(unsubToken)}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">🩼</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">You&apos;re Invited!</h1>
@@ -211,6 +224,7 @@ export async function sendLeagueInviteToNewUser({
           <p style="color:#505c6e;font-size:12px;margin-top:20px;">
             This invite expires in 7 days. If you didn&apos;t expect this, you can ignore this email.
           </p>
+          ${unsubscribeFooterHtmlByToken(unsubToken)}
         </div>
       `,
     });
@@ -248,9 +262,7 @@ export async function sendDraftReminder({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">⏰</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your Draft Starts in 2 Hours</h1>
@@ -297,9 +309,7 @@ export async function sendDraftFinalReminder({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">🚨</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your Draft Is Starting Now!</h1>
@@ -343,9 +353,7 @@ export async function sendDraftStartingEmail({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">🚨</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft Starting in 5 Minutes!</h1>
@@ -404,9 +412,7 @@ export async function sendDraftScheduledEmail({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">📅</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft ${isChange ? "Rescheduled" : "Date Set"}!</h1>
@@ -453,9 +459,7 @@ export async function sendDraftDelayedEmail({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">⚔️</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Draft Delayed</h1>
@@ -499,9 +503,7 @@ export async function sendDraftDecisionNeededEmail({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">⚔️</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Decision Required</h1>
@@ -560,9 +562,7 @@ export async function sendLeagueFullEmail({
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0e1014;color:#edf0f5;border-radius:14px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-            <div style="width:36px;height:36px;background:#dc2f1f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-size:18px;">⚔️</span>
-            </div>
+            ${logoImg()}
             <strong style="font-size:16px;font-weight:800;">Injured List Fantasy</strong>
           </div>
           <h1 style="font-size:20px;font-weight:800;margin:0 0 8px;">Your league is full!</h1>

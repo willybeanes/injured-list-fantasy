@@ -4,26 +4,46 @@ import Link from "next/link";
 export default async function UnsubscribePage({
   searchParams,
 }: {
-  searchParams: Promise<{ uid?: string }>;
+  searchParams: Promise<{ uid?: string; token?: string }>;
 }) {
-  const { uid } = await searchParams;
+  const { uid, token } = await searchParams;
 
-  if (!uid) {
+  if (!uid && !token) {
     return <UnsubscribeLayout>
       <p className="text-[var(--text-muted)]">Invalid unsubscribe link.</p>
     </UnsubscribeLayout>;
   }
 
-  const user = await prisma.user.findUnique({ where: { id: uid }, select: { id: true, emailUnsubscribed: true } });
+  // Registered user unsubscribe via ?uid=
+  if (uid) {
+    const user = await prisma.user.findUnique({ where: { id: uid }, select: { id: true, emailUnsubscribed: true } });
 
-  if (!user) {
-    return <UnsubscribeLayout>
-      <p className="text-[var(--text-muted)]">Invalid unsubscribe link.</p>
-    </UnsubscribeLayout>;
+    if (!user) {
+      return <UnsubscribeLayout>
+        <p className="text-[var(--text-muted)]">Invalid unsubscribe link.</p>
+      </UnsubscribeLayout>;
+    }
+
+    if (!user.emailUnsubscribed) {
+      await prisma.user.update({ where: { id: uid }, data: { emailUnsubscribed: true } });
+    }
   }
 
-  if (!user.emailUnsubscribed) {
-    await prisma.user.update({ where: { id: uid }, data: { emailUnsubscribed: true } });
+  // Non-user (new invite recipient) unsubscribe via ?token=
+  if (token) {
+    const invite = await prisma.leagueInvite.findUnique({ where: { token }, select: { email: true } });
+
+    if (!invite) {
+      return <UnsubscribeLayout>
+        <p className="text-[var(--text-muted)]">Invalid unsubscribe link.</p>
+      </UnsubscribeLayout>;
+    }
+
+    await prisma.blockedEmail.upsert({
+      where: { email: invite.email },
+      create: { email: invite.email },
+      update: {},
+    });
   }
 
   return (

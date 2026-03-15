@@ -147,6 +147,13 @@ export default function DraftRoomPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const autoPickTriggeredRef = useRef(false);
   const prevPickNumberRef = useRef<number | null>(null);
+  // Auto-pick mode: user opts in to being auto-picked for after 5s
+  const [autoPickMode, setAutoPickMode] = useState(false);
+  // Presence: tracks userId + autoPickMode for each connected client
+  const [presenceMap, setPresenceMap] = useState<Map<string, { autoPickMode: boolean }>>(new Map());
+  const presenceMapRef = useRef<Map<string, { autoPickMode: boolean }>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const presenceChannelRef = useRef<any>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   // Check notification permission on mount
@@ -234,6 +241,44 @@ export default function DraftRoomPage() {
     };
   }, [leagueId, loadDraftState, loadPlayers, supabase]);
 
+  // Supabase Presence — track who's in the draft room and their auto-pick status
+  useEffect(() => {
+    if (!draftState?.myUserId) return;
+    const myUserId = draftState.myUserId;
+    const presenceChannel = supabase
+      .channel(`draft-presence:${leagueId}`)
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState<{ userId: string; autoPickMode: boolean }>();
+        const map = new Map<string, { autoPickMode: boolean }>();
+        for (const entries of Object.values(state) as Array<Array<{ userId: string; autoPickMode: boolean }>>) {
+          for (const entry of entries) {
+            map.set(entry.userId, { autoPickMode: entry.autoPickMode ?? false });
+          }
+        }
+        presenceMapRef.current = map;
+        setPresenceMap(new Map(map));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ userId: myUserId, autoPickMode: false });
+          presenceChannelRef.current = presenceChannel;
+        }
+      });
+
+    return () => {
+      presenceChannelRef.current = null;
+      supabase.removeChannel(presenceChannel);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, draftState?.myUserId]);
+
+  // Re-broadcast when autoPickMode changes so all clients see updated status
+  useEffect(() => {
+    if (!presenceChannelRef.current || !draftState?.myUserId) return;
+    presenceChannelRef.current.track({ userId: draftState.myUserId, autoPickMode });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPickMode]);
+
   // Pre-draft countdown — ticks while status is "drafting" but start time is still in the future
   useEffect(() => {
     if (!draftState?.draftScheduledAt) return;
@@ -320,7 +365,14 @@ export default function DraftRoomPage() {
     if (!draftState || draftState.status !== "drafting") return;
     if (!isDraftStarted) return;
 
-    const timerDuration = draftState.pickTimerSeconds ?? 90;
+    // Short 5-second timer if the picker is absent or has auto-pick mode on
+    const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
+    const pickerPresence = presenceMapRef.current.get(currentPickerUserId ?? "");
+    const pickerIsPresent = presenceMapRef.current.has(currentPickerUserId ?? "");
+    const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
+    const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
+      ? (draftState.pickTimerSeconds ?? 90)
+      : Math.min(5, draftState.pickTimerSeconds ?? 90);
     autoPickTriggeredRef.current = false;
 
     if (timerRef.current) clearInterval(timerRef.current);
@@ -351,10 +403,11 @@ export default function DraftRoomPage() {
     autoPickTriggeredRef.current = true;
 
     const trigger = async () => {
-      // Check the queue first — pick the top available queued player
-      const firstQueued = queueRef.current.find(
-        (id) => !draftState!.draftedPlayerIds.has(id)
-      );
+      // Check the queue first — but only when it's actually my turn
+      const isMyTurnNow = draftState!.currentTeamIndex === draftState!.myTeamIndex;
+      const firstQueued = isMyTurnNow
+        ? queueRef.current.find((id) => !draftState!.draftedPlayerIds.has(id))
+        : null;
 
       if (firstQueued) {
         const res = await fetch(`/api/draft/${leagueId}/pick`, {
@@ -452,7 +505,7 @@ export default function DraftRoomPage() {
 
   // ── Filtered + sorted players ─────────────────────────────────────────────────
   const displayPlayers = useMemo(() => {
-    let result = players.filter((p) => !draftState?.draftedPlayerIds.has(p.id));
+    let result = players.filter((p) => !draftState?.draftedPlayerIds?.has(p.id));
 
     // Text search
     if (search.trim()) {
@@ -622,7 +675,13 @@ export default function DraftRoomPage() {
   const isDraftComplete = draftState.status === "active";
   const currentTeam = draftState.teams[draftState.currentTeamIndex];
   const totalPicks = draftState.rosterSize * draftState.teams.length;
-  const timerDuration = draftState.pickTimerSeconds ?? 90;
+  const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
+  const pickerPresence = presenceMap.get(currentPickerUserId ?? "");
+  const pickerIsPresent = presenceMap.has(currentPickerUserId ?? "");
+  const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
+  const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
+    ? (draftState.pickTimerSeconds ?? 90)
+    : Math.min(5, draftState.pickTimerSeconds ?? 90);
   const timerPercent = (timeLeft / timerDuration) * 100;
   const timerColor =
     timeLeft > timerDuration * 0.33
@@ -809,8 +868,27 @@ export default function DraftRoomPage() {
                 )}
               </div>
 
-              {/* Timer */}
+              {/* Auto-pick toggle + Timer */}
               <div className="flex items-center gap-2">
+                {!isDraftComplete && (
+                  <button
+                    onClick={() => setAutoPickMode((p) => !p)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-[7px] text-xs font-bold transition-colors border shrink-0",
+                      autoPickMode
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                    )}
+                    title={
+                      autoPickMode
+                        ? "Auto-draft ON — you'll be auto-picked for after 5s. Click to disable."
+                        : "Enable auto-draft: auto-picks for you after 5s on your turn"
+                    }
+                  >
+                    <Zap className="w-3 h-3" />
+                    Auto
+                  </button>
+                )}
                 <div className="relative w-8 h-8">
                   <svg className="w-8 h-8 -rotate-90">
                     <circle cx="16" cy="16" r="14" fill="none" stroke="var(--border)" strokeWidth="3" />
@@ -1322,11 +1400,28 @@ export default function DraftRoomPage() {
                     </span>
                     <span
                       className={cn(
-                        "truncate font-semibold flex-1",
+                        "font-semibold flex-1 min-w-0 flex items-center gap-1.5",
                         isMyPick ? "text-blue-400" : "text-[var(--text-secondary)]"
                       )}
                     >
-                      {pick.username}
+                      {/* Presence dot: green=online, amber=online+auto, gray=offline */}
+                      {!isDraftComplete && (() => {
+                        const p = presenceMap.get(pick.userId);
+                        const online = !!p;
+                        const autoOn = p?.autoPickMode ?? false;
+                        return (
+                          <span
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full shrink-0",
+                              online
+                                ? autoOn ? "bg-amber-400" : "bg-green-400"
+                                : "bg-[var(--border)]"
+                            )}
+                            title={online ? (autoOn ? "Online – auto-draft on" : "Online") : "Offline"}
+                          />
+                        );
+                      })()}
+                      <span className="truncate">{pick.username}</span>
                     </span>
                     <span
                       className={cn(

@@ -110,12 +110,17 @@ export async function POST(
       });
     }
   } else {
-    await sendLeagueInviteToNewUser({
-      to: normalizedEmail,
-      inviterUsername,
-      leagueName: league.name,
-      signupUrl: `${APP_URL}/signup?invite=${token}`,
-    });
+    // Check if this email has been blocked (non-user unsubscribe)
+    const blocked = await prisma.blockedEmail.findUnique({ where: { email: normalizedEmail } });
+    if (!blocked) {
+      await sendLeagueInviteToNewUser({
+        to: normalizedEmail,
+        inviterUsername,
+        leagueName: league.name,
+        signupUrl: `${APP_URL}/signup?invite=${token}`,
+        unsubToken: token,
+      });
+    }
   }
 
   return NextResponse.json({ ok: true, existingUser: !!existingUser });
