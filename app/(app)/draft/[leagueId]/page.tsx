@@ -99,7 +99,7 @@ export default function DraftRoomPage() {
   const [loading, setLoading] = useState(true);
   const [makingPick, setMakingPick] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(90);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [autoPickMsg, setAutoPickMsg] = useState<string | null>(null);
   const [secsUntilDraft, setSecsUntilDraft] = useState<number | null>(null);
 
@@ -155,6 +155,11 @@ export default function DraftRoomPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const presenceChannelRef = useRef<any>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+
+  // Stable boolean: true once the draft's scheduled start time has passed (or no schedule).
+  // Derived from state so it can be used in the timer effect dependency array, causing the
+  // timer to start exactly once when the pre-draft countdown reaches zero.
+  const draftLive = !!draftState && (!draftState.draftScheduledAt || secsUntilDraft === null || secsUntilDraft <= 0);
 
   // Check notification permission on mount
   useEffect(() => {
@@ -363,12 +368,15 @@ export default function DraftRoomPage() {
   // Pick timer — resets on each pick (only runs after draft has actually started)
   useEffect(() => {
     if (!draftState || draftState.status !== "drafting") return;
-    if (!isDraftStarted) return;
+    if (!draftLive) return;
 
-    // Short 5-second timer if the picker is absent or has auto-pick mode on
+    // Short 5-second timer if the picker is absent or has auto-pick mode on.
+    // Only apply absent-detection once presence has actually synced (map is non-empty),
+    // to avoid a race where the map is empty on first render and everyone looks absent.
     const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
+    const presenceSynced = presenceMapRef.current.size > 0;
     const pickerPresence = presenceMapRef.current.get(currentPickerUserId ?? "");
-    const pickerIsPresent = presenceMapRef.current.has(currentPickerUserId ?? "");
+    const pickerIsPresent = !presenceSynced || presenceMapRef.current.has(currentPickerUserId ?? "");
     const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
     const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
       ? (draftState.pickTimerSeconds ?? 90)
@@ -392,7 +400,7 @@ export default function DraftRoomPage() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftState?.currentPickNumber]);
+  }, [draftState?.currentPickNumber, draftLive]);
 
   // Auto-pick when timer hits 0
   useEffect(() => {
@@ -677,7 +685,8 @@ export default function DraftRoomPage() {
   const totalPicks = draftState.rosterSize * draftState.teams.length;
   const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
   const pickerPresence = presenceMap.get(currentPickerUserId ?? "");
-  const pickerIsPresent = presenceMap.has(currentPickerUserId ?? "");
+  const presenceSynced = presenceMap.size > 0;
+  const pickerIsPresent = !presenceSynced || presenceMap.has(currentPickerUserId ?? "");
   const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
   const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
     ? (draftState.pickTimerSeconds ?? 90)
