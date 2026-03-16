@@ -259,7 +259,7 @@ export default function DraftRoomPage() {
       .then(() => loadDraftState())
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftState?.status, draftState?.draftScheduledAt]);
+  }, [draftState?.status, draftState?.draftScheduledAt, draftLive]);
 
   // Supabase Presence — track who's in the draft room and their auto-pick status
   useEffect(() => {
