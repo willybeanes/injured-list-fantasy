@@ -385,15 +385,14 @@ export default function DraftRoomPage() {
     if (!draftState || draftState.status !== "drafting") return;
     if (!draftLive) return;
 
-    // Short 5-second timer if the picker is absent or has auto-pick mode on.
+    // Short 5-second timer only when the picker is absent (offline/not in the room).
+    // Auto-pick mode uses the full timer — it just means "auto-draft when time runs out."
     // Only apply absent-detection once presence has actually synced (map is non-empty),
     // to avoid a race where the map is empty on first render and everyone looks absent.
     const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
     const presenceSynced = presenceMapRef.current.size > 0;
-    const pickerPresence = presenceMapRef.current.get(currentPickerUserId ?? "");
     const pickerIsPresent = !presenceSynced || presenceMapRef.current.has(currentPickerUserId ?? "");
-    const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
-    const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
+    const timerDuration = pickerIsPresent
       ? (draftState.pickTimerSeconds ?? 90)
       : Math.min(5, draftState.pickTimerSeconds ?? 90);
     // Block auto-pick while the timer is running. It will only be unblocked
