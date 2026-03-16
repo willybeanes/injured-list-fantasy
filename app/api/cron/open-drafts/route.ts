@@ -161,23 +161,16 @@ export async function GET(request: Request) {
     );
     if (deadline > now) continue; // Timer hasn't expired yet — nothing to do
 
+    // Once we've confirmed the draft is stalled, auto-pick all remaining turns in one
+    // cron run (up to MAX_CATCH_UP_PICKS). The deadline re-check was removed because
+    // runAutoPick resets currentPickStartedAt to now after each pick, which would
+    // always break the loop after the first pick and leave the rest for subsequent runs.
     let picks = 0;
     while (picks < MAX_CATCH_UP_PICKS) {
       const result = await runAutoPick(league.id);
-      if (!result.ok) break; // Draft complete or error
+      if (!result.ok) break;
       picks++;
       if (result.draftComplete) break;
-
-      // Check if the NEXT pick is also already overdue (catching up after long absence)
-      const updated = await prisma.league.findUnique({
-        where: { id: league.id },
-        select: { currentPickStartedAt: true, status: true },
-      });
-      if (!updated || updated.status !== "drafting" || !updated.currentPickStartedAt) break;
-      const nextDeadline = new Date(
-        updated.currentPickStartedAt.getTime() + league.pickTimerSeconds * 1000
-      );
-      if (nextDeadline > now) break; // Next pick is still within its window
     }
 
     if (picks > 0) advanced[league.id] = picks;
