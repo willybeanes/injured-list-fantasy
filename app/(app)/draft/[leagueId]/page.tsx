@@ -466,15 +466,17 @@ export default function DraftRoomPage() {
         method: "POST",
       });
       const data = await res.json();
-      if (res.ok && data.autoPicked) {
-        const msg = `⚡ Auto-picked ${data.player.fullName}`;
-        setAutoPickMsg(msg);
-        setTimeout(() => setAutoPickMsg(null), 4000);
+      if (res.ok) {
+        if (isMyTurnNow && data.player?.fullName) {
+          const msg = `⚡ Auto-picked ${data.player.fullName}`;
+          setAutoPickMsg(msg);
+          setTimeout(() => setAutoPickMsg(null), 4000);
+        }
 
         await supabase.channel(`draft:${leagueId}`).send({
           type: "broadcast",
           event: "pick_made",
-          payload: { playerId: data.player.id, autoPicked: true },
+          payload: { playerId: data.player?.id, autoPicked: true },
         });
 
         await loadDraftState();
