@@ -239,7 +239,6 @@ export default function DraftRoomPage() {
       .on("broadcast", { event: "pick_made" }, () => {
         loadDraftState();
         loadPlayers();
-        autoPickTriggeredRef.current = false;
       })
       .subscribe();
 
@@ -397,7 +396,10 @@ export default function DraftRoomPage() {
     const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
       ? (draftState.pickTimerSeconds ?? 90)
       : Math.min(5, draftState.pickTimerSeconds ?? 90);
-    autoPickTriggeredRef.current = false;
+    // Block auto-pick while the timer is running. It will only be unblocked
+    // when the interval itself counts to 0, preventing the auto-pick effect
+    // from firing spuriously when draftState re-renders with timeLeft still at 0.
+    autoPickTriggeredRef.current = true;
 
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(timerDuration);
@@ -406,6 +408,7 @@ export default function DraftRoomPage() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
+          autoPickTriggeredRef.current = false; // Unlock auto-pick only when timer naturally expires
           return 0;
         }
         return t - 1;
