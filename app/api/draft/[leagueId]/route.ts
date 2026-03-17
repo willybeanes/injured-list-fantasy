@@ -109,6 +109,7 @@ export async function GET(
       rosterSize: league.rosterSize,
       pickTimerSeconds: league.pickTimerSeconds,
       draftScheduledAt: league.draftScheduledAt?.toISOString() ?? null,
+      currentPickStartedAt: league.currentPickStartedAt?.toISOString() ?? null,
       teams,
     },
     picks: picksWithData,

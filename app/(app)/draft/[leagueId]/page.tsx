@@ -56,6 +56,7 @@ interface DraftState {
   rosterSize: number;
   pickTimerSeconds: number;
   draftScheduledAt: string | null;
+  currentPickStartedAt: string | null;
   teams: Array<{ userId: string; username: string }>;
   myUserId: string;
   myTeamIndex: number;
@@ -215,7 +216,18 @@ export default function DraftRoomPage() {
       currentTeamIndex: data.currentTeamIndex,
       draftedPlayerIds: draftedIds,
       draftScheduledAt: data.league.draftScheduledAt ?? null,
+      currentPickStartedAt: data.league.currentPickStartedAt ?? null,
     });
+    // Immediately seed the timer from the server-side pick start time so the
+    // display is correct on first load without waiting for the timer effect.
+    if (data.league.status === "drafting" && data.league.currentPickStartedAt) {
+      const elapsed = Math.floor(
+        (Date.now() - new Date(data.league.currentPickStartedAt).getTime()) / 1000
+      );
+      const pickTimer = data.league.pickTimerSeconds ?? 90;
+      const remaining = Math.max(1, pickTimer - elapsed);
+      setTimeLeft(remaining);
+    }
     // Auto-remove any drafted players from the queue
     setQueue((prev) => prev.filter((id) => !draftedIds.has(id)));
   }, [leagueId]);
@@ -395,13 +407,21 @@ export default function DraftRoomPage() {
     const timerDuration = pickerIsPresent
       ? (draftState.pickTimerSeconds ?? 90)
       : Math.min(5, draftState.pickTimerSeconds ?? 90);
+
+    // Compute remaining time from server-stamped pick start time so that
+    // joining mid-pick shows the correct countdown instead of resetting to full.
+    const elapsed = draftState.currentPickStartedAt
+      ? Math.floor((Date.now() - new Date(draftState.currentPickStartedAt).getTime()) / 1000)
+      : 0;
+    const startingTime = Math.max(1, timerDuration - elapsed);
+
     // Block auto-pick while the timer is running. It will only be unblocked
     // when the interval itself counts to 0, preventing the auto-pick effect
     // from firing spuriously when draftState re-renders with timeLeft still at 0.
     autoPickTriggeredRef.current = true;
 
     if (timerRef.current) clearInterval(timerRef.current);
-    setTimeLeft(timerDuration);
+    setTimeLeft(startingTime);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
