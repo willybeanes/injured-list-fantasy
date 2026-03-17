@@ -100,7 +100,9 @@ export default function DraftRoomPage() {
   const [loading, setLoading] = useState(true);
   const [makingPick, setMakingPick] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  // Ticks every second — timeLeft is derived from this + currentPickStartedAt so it's
+  // always correct on first render, with no async effect needed to initialize it.
+  const [now, setNow] = useState(() => Date.now());
   const [autoPickMsg, setAutoPickMsg] = useState<string | null>(null);
   const [secsUntilDraft, setSecsUntilDraft] = useState<number | null>(null);
 
@@ -145,10 +147,9 @@ export default function DraftRoomPage() {
   const { openPlayerCard } = usePlayerCard();
   const { addNotification } = useNotifications();
   const supabase = createClient();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  // Start as true so the auto-pick effect doesn't fire on mount (timeLeft initializes to 0).
-  // The timer effect resets this to false once it properly initializes the countdown.
-  const autoPickTriggeredRef = useRef(true);
+  // Tracks the last pick number for which auto-pick was triggered, so we never
+  // fire twice for the same pick regardless of re-renders.
+  const autoPickTriggeredRef = useRef<number | null>(null);
   const prevPickNumberRef = useRef<number | null>(null);
   // Auto-pick mode: user opts in to being auto-picked for after 5s
   const [autoPickMode, setAutoPickMode] = useState(false);
@@ -159,10 +160,18 @@ export default function DraftRoomPage() {
   const presenceChannelRef = useRef<any>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
-  // Stable boolean: true once the draft's scheduled start time has passed (or no schedule).
-  // Derived from state so it can be used in the timer effect dependency array, causing the
-  // timer to start exactly once when the pre-draft countdown reaches zero.
+  // True once the draft's scheduled start time has passed (or there's no schedule).
   const draftLive = !!draftState && (!draftState.draftScheduledAt || secsUntilDraft === null || secsUntilDraft <= 0);
+
+  // Derived pick timer — always accurate, never needs async initialization.
+  // Computed directly from currentPickStartedAt so the first render after draftState
+  // loads shows the correct value with no "--" flash.
+  const pickTimer = draftState?.pickTimerSeconds ?? 90;
+  const timeLeft = (() => {
+    if (!draftLive || !draftState?.currentPickStartedAt) return 0;
+    const elapsed = Math.floor((now - new Date(draftState.currentPickStartedAt).getTime()) / 1000);
+    return Math.max(0, pickTimer - elapsed);
+  })();
 
   // Check notification permission on mount
   useEffect(() => {
@@ -382,61 +391,22 @@ export default function DraftRoomPage() {
     };
   }, [draftState?.currentTeamIndex, draftState?.myTeamIndex, secsUntilDraft, draftState?.status]);
 
-  // Pick timer — resets on each pick (only runs after draft has actually started)
+  // Single 1-second ticker — drives the derived timeLeft computed above.
   useEffect(() => {
-    if (!draftState || draftState.status !== "drafting") return;
-    if (!draftLive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    // Short 5-second timer only when the picker is absent (offline/not in the room).
-    // Auto-pick mode uses the full timer — it just means "auto-draft when time runs out."
-    // Only apply absent-detection once presence has actually synced (map is non-empty),
-    // to avoid a race where the map is empty on first render and everyone looks absent.
-    const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
-    const presenceSynced = presenceMapRef.current.size > 0;
-    const pickerIsPresent = !presenceSynced || presenceMapRef.current.has(currentPickerUserId ?? "");
-    const timerDuration = pickerIsPresent
-      ? (draftState.pickTimerSeconds ?? 90)
-      : Math.min(5, draftState.pickTimerSeconds ?? 90);
-
-    // Compute remaining time from server-stamped pick start time so that
-    // joining mid-pick shows the correct countdown instead of resetting to full.
-    const elapsed = draftState.currentPickStartedAt
-      ? Math.floor((Date.now() - new Date(draftState.currentPickStartedAt).getTime()) / 1000)
-      : 0;
-    const startingTime = Math.max(1, timerDuration - elapsed);
-
-    // Block auto-pick while the timer is running. It will only be unblocked
-    // when the interval itself counts to 0, preventing the auto-pick effect
-    // from firing spuriously when draftState re-renders with timeLeft still at 0.
-    autoPickTriggeredRef.current = true;
-
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTimeLeft(startingTime);
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current!);
-          autoPickTriggeredRef.current = false; // Unlock auto-pick only when timer naturally expires
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftState?.currentPickNumber, draftLive]);
-
-  // Auto-pick when timer hits 0
+  // Auto-pick when timer hits 0.
+  // autoPickTriggeredRef stores the pick number we last fired for, so we never
+  // double-fire even if the effect re-runs due to a re-render.
   useEffect(() => {
     if (timeLeft !== 0) return;
     if (!draftState || draftState.status !== "drafting") return;
-    if (autoPickTriggeredRef.current) return;
+    if (!draftLive) return;
+    if (autoPickTriggeredRef.current === draftState.currentPickNumber) return;
 
-    autoPickTriggeredRef.current = true;
+    autoPickTriggeredRef.current = draftState.currentPickNumber;
 
     const trigger = async () => {
       // Check the queue first — but only when it's actually my turn
@@ -498,7 +468,8 @@ export default function DraftRoomPage() {
     };
 
     trigger();
-  }, [timeLeft, draftState, leagueId, loadDraftState, loadPlayers, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, draftLive, draftState?.currentPickNumber, draftState?.status, leagueId]);
 
   const makePick = async (playerId: number) => {
     if (!draftState) return;
@@ -720,19 +691,21 @@ export default function DraftRoomPage() {
   const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
   const presenceSynced = presenceMap.size > 0;
   const pickerIsPresent = !presenceSynced || presenceMap.has(currentPickerUserId ?? "");
-  // Timer display always uses the full pick duration for present pickers,
-  // 5 s only for absent ones — same logic as the timer effect.
+  // Timer ring: present pickers show the full countdown; absent pickers see a 5-second
+  // display so they can tell the draft is about to auto-advance (actual auto-pick still
+  // fires at timeLeft === 0 / pickTimerSeconds elapsed).
   const timerDuration = pickerIsPresent
-    ? (draftState.pickTimerSeconds ?? 90)
-    : Math.min(5, draftState.pickTimerSeconds ?? 90);
-  // timeLeft === 0 means the state hasn't been initialized yet (effect fires after first render).
-  // Show a full green ring and "--" until the first tick arrives.
-  const timerReady = timeLeft > 0;
-  const timerPercent = timerReady ? (timeLeft / timerDuration) * 100 : 100;
+    ? pickTimer
+    : Math.min(5, pickTimer);
+  const displayTimeLeft = pickerIsPresent
+    ? timeLeft
+    : Math.max(0, timeLeft - (pickTimer - Math.min(5, pickTimer)));
+  const timerReady = draftLive && !!draftState?.currentPickStartedAt;
+  const timerPercent = timerReady ? (displayTimeLeft / timerDuration) * 100 : 100;
   const timerColor = timerReady
-    ? (timeLeft > timerDuration * 0.33
+    ? (displayTimeLeft > timerDuration * 0.33
         ? "#16a34a"
-        : timeLeft > timerDuration * 0.17
+        : displayTimeLeft > timerDuration * 0.17
         ? "#d97706"
         : "#dc2f1f")
     : "#16a34a";
@@ -961,7 +934,7 @@ export default function DraftRoomPage() {
                     className="absolute inset-0 flex items-center justify-center text-xs font-extrabold"
                     style={{ color: timerColor }}
                   >
-                    {timerReady ? timeLeft : "--"}
+                    {timerReady ? displayTimeLeft : "--"}
                   </span>
                 </div>
                 <Clock className="w-4 h-4 text-[var(--text-muted)]" />
