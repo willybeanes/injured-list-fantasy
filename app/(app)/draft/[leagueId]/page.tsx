@@ -715,13 +715,17 @@ export default function DraftRoomPage() {
   const timerDuration = pickerIsPresent
     ? (draftState.pickTimerSeconds ?? 90)
     : Math.min(5, draftState.pickTimerSeconds ?? 90);
-  const timerPercent = (timeLeft / timerDuration) * 100;
-  const timerColor =
-    timeLeft > timerDuration * 0.33
-      ? "#16a34a"
-      : timeLeft > timerDuration * 0.17
-      ? "#d97706"
-      : "#dc2f1f";
+  // timeLeft === 0 means the state hasn't been initialized yet (effect fires after first render).
+  // Show a full green ring and "--" until the first tick arrives.
+  const timerReady = timeLeft > 0;
+  const timerPercent = timerReady ? (timeLeft / timerDuration) * 100 : 100;
+  const timerColor = timerReady
+    ? (timeLeft > timerDuration * 0.33
+        ? "#16a34a"
+        : timeLeft > timerDuration * 0.17
+        ? "#d97706"
+        : "#dc2f1f")
+    : "#16a34a";
 
   // Pre-draft waiting room: status is "drafting" but start time hasn't passed yet
   if (!isDraftStarted && secsUntilDraft !== null && secsUntilDraft > 0) {
@@ -947,7 +951,7 @@ export default function DraftRoomPage() {
                     className="absolute inset-0 flex items-center justify-center text-xs font-extrabold"
                     style={{ color: timerColor }}
                   >
-                    {timeLeft}
+                    {timerReady ? timeLeft : "--"}
                   </span>
                 </div>
                 <Clock className="w-4 h-4 text-[var(--text-muted)]" />
