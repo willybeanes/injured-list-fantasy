@@ -218,16 +218,6 @@ export default function DraftRoomPage() {
       draftScheduledAt: data.league.draftScheduledAt ?? null,
       currentPickStartedAt: data.league.currentPickStartedAt ?? null,
     });
-    // Immediately seed the timer from the server-side pick start time so the
-    // display is correct on first load without waiting for the timer effect.
-    if (data.league.status === "drafting" && data.league.currentPickStartedAt) {
-      const elapsed = Math.floor(
-        (Date.now() - new Date(data.league.currentPickStartedAt).getTime()) / 1000
-      );
-      const pickTimer = data.league.pickTimerSeconds ?? 90;
-      const remaining = Math.max(1, pickTimer - elapsed);
-      setTimeLeft(remaining);
-    }
     // Auto-remove any drafted players from the queue
     setQueue((prev) => prev.filter((id) => !draftedIds.has(id)));
   }, [leagueId]);
