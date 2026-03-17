@@ -460,9 +460,13 @@ export default function DraftRoomPage() {
         console.warn("Queue pick failed:", data.error);
       }
 
-      // No queue or queue pick failed — use server-side auto-pick
+      // No queue or queue pick failed — use server-side auto-pick.
+      // Include currentPickNumber so the server can reject duplicate concurrent requests
+      // (race condition where multiple clients fire auto-pick simultaneously).
       const res = await fetch(`/api/draft/${leagueId}/auto-pick`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPickNumber: draftState!.currentPickNumber }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -704,11 +708,11 @@ export default function DraftRoomPage() {
   const currentTeam = draftState.teams[draftState.currentTeamIndex];
   const totalPicks = draftState.rosterSize * draftState.teams.length;
   const currentPickerUserId = draftState.teams[draftState.currentTeamIndex]?.userId;
-  const pickerPresence = presenceMap.get(currentPickerUserId ?? "");
   const presenceSynced = presenceMap.size > 0;
   const pickerIsPresent = !presenceSynced || presenceMap.has(currentPickerUserId ?? "");
-  const pickerAutoPickOn = pickerPresence?.autoPickMode ?? false;
-  const timerDuration = (pickerIsPresent && !pickerAutoPickOn)
+  // Timer display always uses the full pick duration for present pickers,
+  // 5 s only for absent ones — same logic as the timer effect.
+  const timerDuration = pickerIsPresent
     ? (draftState.pickTimerSeconds ?? 90)
     : Math.min(5, draftState.pickTimerSeconds ?? 90);
   const timerPercent = (timeLeft / timerDuration) * 100;

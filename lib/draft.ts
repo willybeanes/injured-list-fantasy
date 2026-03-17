@@ -9,12 +9,16 @@ export type AutoPickResult =
  * Picks the best available active player for the current team in a drafting league.
  * Safe to call from both API routes (per-pick timer expiry) and cron jobs (stalled draft recovery).
  *
+ * @param expectedPicksMade - If provided, the pick is rejected if the draft has already
+ *   advanced past this point (i.e. totalPicksMade !== expectedPicksMade). This prevents
+ *   multiple concurrent auto-pick requests from advancing the draft more than once per slot.
+ *
  * After a successful pick:
  * - Updates League.currentPickStartedAt to now (for stall detection on the next pick)
  * - Broadcasts pick_made via Supabase Realtime so connected clients update instantly
  * - Sets status → "active" and currentPickStartedAt → null when draft completes
  */
-export async function runAutoPick(leagueId: string): Promise<AutoPickResult> {
+export async function runAutoPick(leagueId: string, expectedPicksMade?: number): Promise<AutoPickResult> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     include: {
@@ -42,6 +46,12 @@ export async function runAutoPick(leagueId: string): Promise<AutoPickResult> {
 
   if (totalPicksMade >= totalPicksAllowed) {
     return { ok: false, error: "Draft is already complete" };
+  }
+
+  // Idempotency check: reject if another client already advanced past this slot.
+  // This prevents concurrent auto-pick requests from advancing the draft multiple times.
+  if (expectedPicksMade !== undefined && totalPicksMade !== expectedPicksMade) {
+    return { ok: false, error: "Pick already made for this slot" };
   }
 
   // Snake draft: determine current team

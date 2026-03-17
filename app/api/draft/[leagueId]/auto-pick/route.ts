@@ -11,7 +11,7 @@ import { runAutoPick } from "@/lib/draft";
  * server-side cron-driven stall recovery.
  */
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { leagueId: string } }
 ) {
   const supabase = await createClient();
@@ -25,7 +25,21 @@ export async function POST(
   });
   if (!member) return NextResponse.json({ error: "Not a league member" }, { status: 403 });
 
-  const result = await runAutoPick(leagueId);
+  // Optional idempotency guard: client passes the pick number it thinks is current.
+  // If the draft has already advanced, we silently return ok:false so the client
+  // knows to just refresh state without showing an error.
+  let expectedPicksMade: number | undefined;
+  try {
+    const body = await request.json();
+    if (typeof body?.currentPickNumber === "number") {
+      // currentPickNumber is 1-indexed; totalPicksMade = currentPickNumber - 1
+      expectedPicksMade = body.currentPickNumber - 1;
+    }
+  } catch {
+    // Body parsing is optional; proceed without idempotency check
+  }
+
+  const result = await runAutoPick(leagueId, expectedPicksMade);
 
   if (!result.ok) {
     const status = result.error === "League not found" ? 404
